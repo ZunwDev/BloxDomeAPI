@@ -102,7 +102,7 @@ const updateBookmarks = async (req, reply) => {
   reply.send({ success: true, bookmarks });
 };
 
-const getBookmarks = async (req, reply) => {
+const getBookmarkIds = async (req, reply) => {
   const { player_id } = req.params;
 
   const { data: playerData, error: playerError } = await supabase
@@ -117,10 +117,65 @@ const getBookmarks = async (req, reply) => {
   return reply.send({ data: bookmarkPlaceIds });
 };
 
+const getBookmarkedGames = async (req, reply) => {
+  const { player_id } = req.params;
+  const { codes = "all" } = req.query;
+
+  const { data: playerData, error: playerError } = await supabase
+    .from("players")
+    .select("bookmarks")
+    .eq("player_id", player_id)
+    .single();
+
+  if (playerError || !playerData) {
+    return sendError(reply, 500, "Player not found", playerError?.message);
+  }
+
+  const bookmarkPlaceIds = playerData.bookmarks;
+  if (!bookmarkPlaceIds?.length) {
+    return reply.send({ data: [] });
+  }
+
+  const { data: games, error: gamesError } = await supabase.from("games").select("*").in("place_id", bookmarkPlaceIds);
+
+  if (gamesError) {
+    return sendError(reply, 500, "Failed to fetch games", gamesError.message);
+  }
+
+  const placeIds = games.map((game) => game.place_id);
+  const { data: codesData, error: codesError } = await supabase
+    .from("codes")
+    .select("place_id, active")
+    .in("place_id", placeIds);
+
+  if (codesError) {
+    return sendError(reply, 500, "Failed to fetch codes", codesError.message);
+  }
+
+  const activeCodesCount = codesData.reduce((acc, code) => {
+    if (code.active) acc[code.place_id] = (acc[code.place_id] || 0) + 1;
+    return acc;
+  }, {});
+
+  let gamesWithCodes = games.map((game) => ({
+    ...game,
+    active_codes: activeCodesCount[game.place_id] || 0,
+  }));
+
+  if (codes === "active") {
+    gamesWithCodes = gamesWithCodes.filter((g) => g.active_codes > 0);
+  } else if (codes === "expired") {
+    gamesWithCodes = gamesWithCodes.filter((g) => g.active_codes === 0);
+  }
+
+  reply.send({ data: gamesWithCodes });
+};
+
 export default {
   getPlayers,
   getPlayer,
   createPlayer,
   updateBookmarks,
-  getBookmarks,
+  getBookmarkIds,
+  getBookmarkedGames,
 };

@@ -3,11 +3,15 @@ import { supabase } from "../utils/supabase-client.js";
 import { sendError } from "../utils/utils.js";
 
 const getGames = async (req, reply) => {
-  const { page = 1, limit = 12, sort = "latest", updated = "all", genre_id, codes = "all" } = req.query;
+  const { page = 1, limit = 12, sort = "latest", updated = "all", genre_id, codes = "all", search = "" } = req.query;
   const offset = (page - 1) * limit;
 
   let query = supabase.from("games").select("*");
   if (genre_id) query = query.eq("genre_id", genre_id);
+
+  if (search.trim()) {
+    query = query.ilike("name", `%${search.trim()}%`);
+  }
 
   if (updated !== "all") {
     const now = new Date();

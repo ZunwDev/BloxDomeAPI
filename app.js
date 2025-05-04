@@ -2,11 +2,7 @@ import fastifyCookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import fastifyRateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
-
-import authRoutes from "./src/routes/auth.js";
-import codeRoutes from "./src/routes/codes.js";
-import gamesRoutes from "./src/routes/games.js";
-import playerRoutes from "./src/routes/players.js";
+import routes from "./src/routes/index.js";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -46,9 +42,6 @@ fastify.addHook("preHandler", async (req, reply) => {
   }
 });
 
-await fastify.register(gamesRoutes);
-await fastify.register(playerRoutes);
-await fastify.register(authRoutes);
-await fastify.register(codeRoutes);
+for (const route of routes) await fastify.register(route);
 
 export default fastify;

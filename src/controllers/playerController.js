@@ -67,6 +67,18 @@ const createPlayer = async (req, reply) => {
     const { data, error } = await supabase.from("players").insert([playerData]).select().single();
     if (error) return sendError(reply, 400, "Failed to create player", error.message);
 
+    if (added_by) {
+      const { error: updateError } = await supabase
+        .from("players")
+        .update({ last_activity: new Date().toISOString() })
+        .eq("player_id", added_by);
+
+      if (updateError) {
+        console.error(updateError);
+        return sendError(reply, 400, "Failed to update last activity", updateError.message);
+      }
+    }
+
     return reply.status(201).send(data);
   } catch (error) {
     console.error(error);
@@ -98,6 +110,18 @@ const updateBookmarks = async (req, reply) => {
 
   const { error: updateError } = await supabase.from("players").update({ bookmarks }).eq("player_id", player_id);
   if (updateError) return sendError(reply, 500, "Failed to update bookmarks", updateError.message);
+
+  if (player_id) {
+    const { error: updateError } = await supabase
+      .from("players")
+      .update({ last_activity: new Date().toISOString() })
+      .eq("player_id", player_id);
+
+    if (updateError) {
+      console.error(updateError);
+      return sendError(reply, 400, "Failed to update last activity", updateError.message);
+    }
+  }
 
   reply.send({ success: true, bookmarks });
 };

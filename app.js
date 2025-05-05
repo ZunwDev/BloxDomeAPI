@@ -1,8 +1,10 @@
 import fastifyCookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import jwt from "@fastify/jwt";
 import fastifyRateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import routes from "./src/routes/index.js";
+import { DEFAULT_API_URL } from "./src/utils/config.js";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -15,6 +17,19 @@ const fastify = Fastify({
       remove: true,
     },
   },
+});
+fastify.register(jwt, { secret: process.env.JWT_SECRET });
+
+fastify.addHook("preHandler", async (request, reply) => {
+  if (request.method === "GET" || request.url.startsWith(`${DEFAULT_API_URL}/players`)) {
+    return;
+  }
+
+  try {
+    await request.jwtVerify();
+  } catch (err) {
+    reply.status(401).send({ error: "Unauthorized" });
+  }
 });
 
 await fastify.register(cors, {
@@ -31,15 +46,6 @@ await fastify.register(fastifyRateLimit, {
 fastify.register(fastifyCookie, {
   secret: process.env.COOKIE_SECRET,
   parseOptions: {},
-});
-
-fastify.addHook("preHandler", async (req, reply) => {
-  if (req.method !== "GET") {
-    const apiKey = req.headers["x-api-key"];
-    if (apiKey !== process.env.API_KEY) {
-      return reply.code(401).send({ error: "Invalid API Key" });
-    }
-  }
 });
 
 for (const route of routes) await fastify.register(route);

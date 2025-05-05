@@ -93,6 +93,18 @@ const createCode = async (req, reply) => {
 
   if (gameUpdateError) return sendError(reply, 400, "Game update failed", gameUpdateError.message);
 
+  if (added_by) {
+    const { error: updateError } = await supabase
+      .from("players")
+      .update({ last_activity: new Date().toISOString() })
+      .eq("player_id", added_by);
+
+    if (updateError) {
+      console.error(updateError);
+      return sendError(reply, 400, "Failed to update last activity", updateError.message);
+    }
+  }
+
   return reply.status(200).send(results);
 };
 

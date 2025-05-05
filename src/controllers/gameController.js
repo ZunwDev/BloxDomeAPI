@@ -196,6 +196,18 @@ const createGame = async (req, reply) => {
     const { data, error } = await supabase.from("games").insert([gameData]).select().single();
     if (error) return sendError(reply, 400, "Failed to create game", error.message);
 
+    if (added_by) {
+      const { error: updateError } = await supabase
+        .from("players")
+        .update({ last_activity: new Date().toISOString() })
+        .eq("player_id", added_by);
+
+      if (updateError) {
+        console.error(updateError);
+        return sendError(reply, 400, "Failed to update last activity", updateError.message);
+      }
+    }
+
     return reply.status(201).send(data);
   } catch (err) {
     console.error(err);

@@ -13,22 +13,35 @@ const fastify = Fastify({
   logger: {
     level: "info",
     redact: {
-      paths: ['req.headers["x-api-key"]', "req.headers.cookie", "req.headers.authorization"],
+      paths: ["req.headers.cookie", "req.headers.authorization"],
       remove: true,
     },
   },
 });
-fastify.register(jwt, { secret: process.env.JWT_SECRET });
+
+fastify.register(jwt, {
+  secret: process.env.JWT_SECRET_PRIVATE,
+  verify: { publicKey: process.env.JWT_SECRET_PUBLIC },
+});
 
 fastify.addHook("preHandler", async (request, reply) => {
-  if (request.method === "GET" || request.url.startsWith(`${DEFAULT_API_URL}/players`)) {
+  if (
+    request.method === "GET" ||
+    request.url.startsWith(`${DEFAULT_API_URL}/players`) ||
+    request.url.startsWith(`${DEFAULT_API_URL}/auth/verify`)
+  ) {
     return;
   }
 
+  const verificationToken = request.cookies._rocodesVerification;
+  if (!verificationToken) {
+    return reply.status(401).send({ error: "Unauthorized, no verification token" });
+  }
+
   try {
-    await request.jwtVerify();
+    fastify.jwt.verify(verificationToken);
   } catch (err) {
-    reply.status(401).send({ error: "Unauthorized" });
+    return reply.status(401).send({ error: "Unauthorized, invalid verification token" });
   }
 });
 

@@ -1,47 +1,30 @@
 import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
-import { supabase } from "../utils/supabase-client.js";
+import * as authService from "../services/authService.js";
 import { sendError } from "../utils/utils.js";
 dotenv.config();
 
 export const createVerification = async (req, reply) => {
   const { player_id, username } = req.body;
-  const token = jwt.sign({ player_id, username }, process.env.JWT_SECRET, { expiresIn: "60d" });
+  const payload = { player_id, username };
 
-  const { data: existing, error: fetchError } = await supabase.from("verified").select("*").eq("player_id", player_id).single();
+  try {
+    await authService.ensureVerifiedUser(player_id);
+    const { privateToken, publicToken } = authService.createTokens(payload);
 
-  if (fetchError && fetchError.code !== "PGRST116") {
-    return sendError(reply, 500, "Fetch failed", fetchError.message || fetchError);
+    const cookieOptions = {
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 60,
+    };
+
+    reply.setCookie("_rocodesVerification", privateToken, { ...cookieOptions, httpOnly: true });
+    reply.setCookie("_rocodesData", publicToken, { ...cookieOptions, httpOnly: false });
+
+    return reply.send({ success: true });
+  } catch (err) {
+    return sendError(reply, 500, "Verification failed", err.message);
   }
-
-  let result;
-  let error;
-
-  if (existing) {
-    ({ data: result, error } = await supabase.from("verified").update({ jwt_token: token }).eq("player_id", player_id));
-  } else {
-    ({ data: result, error } = await supabase.from("verified").insert([{ player_id, jwt_token: token }]));
-  }
-
-  if (error) return sendError(reply, 500, "Save failed", error.message || error);
-
-  reply.setCookie("_rocodesVerification", token, {
-    httpOnly: true,
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 60,
-  });
-
-  reply.setCookie("_rocodesData", token, {
-    httpOnly: false,
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 60,
-  });
-
-  return reply.send({ success: true, token });
 };
 
 export const logout = async (req, reply) => {
@@ -49,5 +32,3 @@ export const logout = async (req, reply) => {
   reply.clearCookie("_rocodesData", { path: "/" });
   return reply.send({ success: true });
 };
-
-export default { createVerification, logout };

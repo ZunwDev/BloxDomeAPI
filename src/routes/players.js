@@ -1,4 +1,4 @@
-import playerController from "../controllers/playerController.js";
+import * as playerController from "../controllers/playerController.js";
 import { DEFAULT_API_URL } from "../utils/config.js";
 
 export default async function (fastify) {

@@ -1,5 +1,5 @@
 import * as statsService from "../services/statsService.js";
-import { sendError } from "../utils/utils.js";
+import { sendError } from "../utils/helpers.js";
 
 export const getStats = async (req, reply) => {
   try {

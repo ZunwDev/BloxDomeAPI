@@ -1,5 +1,5 @@
 import * as gameService from "../services/gameService.js";
-import { sendError } from "../utils/utils.js";
+import { sendError } from "../utils/helpers.js";
 
 export const getGames = async (req, reply) => {
   try {

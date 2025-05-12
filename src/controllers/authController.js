@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import * as authService from "../services/authService.js";
-import { sendError } from "../utils/utils.js";
+import { sendError } from "../utils/helpers.js";
 dotenv.config();
 
 export const createVerification = async (req, reply) => {

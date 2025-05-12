@@ -4,5 +4,6 @@ import games from "./games.js";
 import players from "./players.js";
 import roblox from "./roblox.js";
 import stats from "./stats.js";
+import submissions from "./submissions.js";
 
-export default [auth, codes, games, players, stats, roblox];
+export default [auth, codes, games, players, stats, roblox, submissions];

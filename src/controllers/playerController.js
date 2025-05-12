@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import * as playerService from "../services/playerService.js";
-import { sendError } from "../utils/utils.js";
+import { sendError } from "../utils/helpers.js";
 dotenv.config();
 
 export const getPlayers = async (req, reply) => {
@@ -65,7 +65,7 @@ export const getBookmarkIds = async (req, reply) => {
 
 export const getBookmarkedGames = async (req, reply) => {
   try {
-    const { data, error } = await playerService.getBookmarkedGamesService(req.params.player_id, req.query.codes);
+    const { data, error } = await playerService.getBookmarkedGames(req.params.player_id, req.query.codes);
     if (error) return sendError(reply, 500, "Failed to fetch games", error.message);
     reply.send({ data });
   } catch (err) {

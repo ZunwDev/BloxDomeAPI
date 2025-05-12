@@ -1,5 +1,5 @@
 import * as codeService from "../services/codeService.js";
-import { sendError } from "../utils/utils.js";
+import { sendError } from "../utils/helpers.js";
 
 export const createCode = async (req, reply) => {
   try {

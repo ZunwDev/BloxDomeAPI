@@ -1,5 +1,5 @@
 import * as robloxService from "../services/robloxService.js";
-import { sendError } from "../utils/utils.js";
+import { sendError } from "../utils/helpers.js";
 
 export const getRobloxUser = async (req, reply) => {
   try {

@@ -4,9 +4,18 @@ import { supabase } from "../utils/supabase-client.js";
 
 export const fetchGames = async (queryParams) => {
   const { page = 1, limit = 12, sort = "latest", updated = "all", genre_id, codes = "all", search = "" } = queryParams;
+
   const offset = (page - 1) * limit;
 
-  let query = supabase.from("games").select("*");
+  let query = supabase.from("games").select(
+    `
+      *,
+      genres(name),
+      codes(count:place_id, active)
+    `,
+    { count: "exact" }
+  );
+
   if (genre_id) query = query.eq("genre_id", genre_id);
   if (search.trim()) query = query.ilike("name", `%${search.trim()}%`);
 
@@ -26,49 +35,41 @@ export const fetchGames = async (queryParams) => {
 
   const { data: games, error } = await query;
   if (error) throw new Error(error.message);
-  if (!games.length) return [];
 
-  const placeIds = games.map((g) => g.place_id);
-  const { data: codesData, error: codesError } = await supabase
-    .from("codes")
-    .select("place_id, active")
-    .in("place_id", placeIds);
-  if (codesError) throw new Error(codesError.message);
+  // Aggregate active code counts
+  const gamesWithCodeCounts = games.map((game) => {
+    const activeCodes = game.codes?.filter((c) => c.active)?.length || 0;
+    return {
+      ...game,
+      genre: game.genres?.name || null,
+      active_codes: activeCodes,
+    };
+  });
 
-  const activeCodesCount = codesData.reduce((acc, code) => {
-    if (code.active) acc[code.place_id] = (acc[code.place_id] || 0) + 1;
-    return acc;
-  }, {});
+  if (codes === "with-codes") return gamesWithCodeCounts.filter((g) => g.active_codes > 0);
+  if (codes === "without-codes") return gamesWithCodeCounts.filter((g) => g.active_codes === 0);
 
-  let gamesWithCodes = games.map((game) => ({
-    ...game,
-    active_codes: activeCodesCount[game.place_id] || 0,
-  }));
-
-  if (codes === "with-codes") gamesWithCodes = gamesWithCodes.filter((g) => g.active_codes > 0);
-  if (codes === "without-codes") gamesWithCodes = gamesWithCodes.filter((g) => g.active_codes === 0);
-
-  return gamesWithCodes;
+  return gamesWithCodeCounts;
 };
 
 export const fetchGameDetails = async (place_id) => {
-  const { data: game, error } = await supabase.from("games").select("*").eq("place_id", place_id).single();
-  if (error || !game) throw new Error("Game not found");
+  const { data: game, error } = await supabase
+    .from("games")
+    .select(
+      `
+      *,
+      genres(name),
+      last_editor:code_updated_by(username, thumbnail_circle_url),
+      codes(*)
+    `
+    )
+    .eq("place_id", place_id)
+    .single();
 
-  const [{ data: genre }, { data: codes }, { data: player }] = await Promise.all([
-    supabase.from("genres").select("name").eq("id", game.genre_id).single(),
-    supabase.from("codes").select("*").eq("place_id", place_id),
-    game.code_updated_by
-      ? supabase.from("players").select("username").eq("player_id", game.code_updated_by).single()
-      : { data: null },
-  ]);
+  if (error || !game) throw new Error("Game not found");
 
   return {
     ...game,
-    genre: genre?.name || null,
-    username: player?.username || null,
-    active_codes: codes?.filter((c) => c.active),
-    expired_codes: codes?.filter((c) => !c.active),
   };
 };
 

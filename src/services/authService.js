@@ -17,7 +17,6 @@ export const ensureVerifiedUser = async (player_id) => {
   if (fetchError) throw fetchError;
   if (!existing) {
     const { error: insertError } = await supabase.from("verified").insert([{ player_id }]);
-
     if (insertError) throw insertError;
   }
 };

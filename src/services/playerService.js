@@ -2,9 +2,9 @@ import axios from "axios";
 import { ROBLOX_THUMBNAIL_URL, ROBLOX_USERS_URL } from "../utils/config.js";
 import { supabase } from "../utils/supabase-client.js";
 
-export const fetchPlayers = async ({ q = "", page = 1, perPage = 9 }) => {
-  const from = (page - 1) * perPage;
-  const to = from + perPage - 1;
+export const fetchPlayers = async ({ q = "", page = 1, limit = 9 }) => {
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
 
   let query = supabase.from("players").select("*");
   if (q) query = query.ilike("username", `%${q}%`);

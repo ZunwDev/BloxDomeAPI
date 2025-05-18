@@ -38,10 +38,23 @@ fastify.addHook("preHandler", async (request, reply) => {
     return reply.status(401).send({ error: "Unauthorized, no verification token" });
   }
 
+  let decoded;
   try {
-    fastify.jwt.verify(verificationToken);
+    decoded = fastify.jwt.verify(verificationToken);
   } catch (err) {
     return reply.status(401).send({ error: "Unauthorized, invalid verification token" });
+  }
+
+  const isAdmin = adminIds.includes(String(decoded.player_id));
+
+  if (request.method === "POST" && request.url === `${DEFAULT_API_URL}/submissions`) {
+    return;
+  }
+
+  if ((request.method === "PATCH" || request.method === "POST") && request.url.startsWith(`${DEFAULT_API_URL}/submissions`)) {
+    if (!isAdmin) {
+      return reply.status(403).send({ error: "Forbidden for non-admins" });
+    }
   }
 });
 

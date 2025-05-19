@@ -1,14 +1,26 @@
 import { supabase } from "../utils/supabase-client.js";
 
-export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, codes = [] }) => {
+export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, reviewed_by, codes = [] }) => {
   const results = { created: [], updated: [], skipped: [], deleted: [] };
+  const now = new Date().toISOString();
 
+  // Fetch existing codes
   const { data: existingCodes, error: existingError } = await supabase.from("codes").select("*").eq("place_id", place_id);
-  if (existingError) throw { status: 500, message: "Fetch existing codes failed", details: existingError.message };
 
-  const incomingCodes = codes.map((c) => c.code);
-  const codesToDelete = existingCodes.filter((ec) => !incomingCodes.includes(ec.code));
+  if (existingError) {
+    console.error("[ERROR] Fetching existing codes:", existingError);
+    throw {
+      status: 500,
+      message: "Fetch existing codes failed",
+      details: existingError.message,
+    };
+  }
+
   const existingMap = Object.fromEntries(existingCodes.map((c) => [c.code, c]));
+  const incomingCodeSet = new Set(codes.map((c) => c.code));
+
+  // DELETE codes not in the new list
+  const codesToDelete = existingCodes.filter((ec) => !incomingCodeSet.has(ec.code));
 
   if (codesToDelete.length > 0) {
     const { error: deleteError } = await supabase
@@ -18,56 +30,75 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, code
         "id",
         codesToDelete.map((c) => c.id)
       );
-    if (deleteError) throw { status: 400, message: "Delete failed", details: deleteError.message };
-    results.deleted.push(...codesToDelete);
+    if (deleteError) {
+      console.error("[ERROR] Deleting codes:", deleteError);
+      throw { status: 400, message: "Delete failed", details: deleteError.message };
+    }
+    results.deleted = codesToDelete;
   }
 
-  const now = new Date().toISOString();
-  const bulkInsertData = [];
-  const bulkUpdateData = [];
+  // Prepare insert/update/skip
+  const toInsert = [];
+  const toUpdate = [];
 
   for (const code of codes) {
     const existing = existingMap[code.code];
 
     if (!existing) {
-      bulkInsertData.push({ ...code, place_id, added_by, updated_at: now });
+      toInsert.push({ ...code, place_id, added_by, updated_at: now });
     } else {
       const isSame =
         JSON.stringify({ rewards: existing.rewards, active: existing.active }) ===
         JSON.stringify({ rewards: code.rewards, active: code.active });
+
       if (isSame) {
         results.skipped.push(existing);
       } else {
-        bulkUpdateData.push({ ...code, id: existing.id, updated_at: now });
+        toUpdate.push({ ...code, id: existing.id, updated_at: now });
       }
     }
   }
 
-  if (bulkInsertData.length) {
-    const { data: created, error: insertError } = await supabase.from("codes").insert(bulkInsertData).select();
-    if (insertError) throw { status: 400, message: "Insert failed", details: insertError.message };
-    results.created.push(...created);
+  if (toInsert.length) {
+    const { data, error } = await supabase.from("codes").insert(toInsert).select();
+    if (error) {
+      console.error("[ERROR] Inserting codes:", error);
+      throw { status: 400, message: "Insert failed", details: error.message };
+    }
+    results.created = data;
   }
 
-  if (bulkUpdateData.length) {
-    const { data: updated, error: updateError } = await supabase
+  // Update
+  if (toUpdate.length) {
+    const { data, error } = await supabase
       .from("codes")
-      .upsert(bulkUpdateData, { onConflict: ["id"] })
+      .upsert(toUpdate, { onConflict: ["id"] })
       .select();
-    if (updateError) throw { status: 400, message: "Update failed", details: updateError.message };
-    results.updated.push(...updated);
+    if (error) {
+      console.error("[ERROR] Updating codes:", error);
+      throw { status: 400, message: "Update failed", details: error.message };
+    }
+    results.updated = data;
   }
 
-  const { error: gameUpdateError } = await supabase
+  // Update game
+  const { error: gameError } = await supabase
     .from("games")
-    .update({ code_updated_by: updated_by, code_updated_at: now })
+    .update({
+      code_updated_by: updated_by,
+      code_updated_at: now,
+      code_reviewed_by: reviewed_by,
+    })
     .eq("place_id", place_id);
-  if (gameUpdateError) throw { status: 400, message: "Game update failed", details: gameUpdateError.message };
-
-  if (added_by) {
-    const { error: updateError } = await supabase.from("players").update({ last_activity: now }).eq("player_id", added_by);
-    if (updateError) throw { status: 400, message: "Failed to update last activity", details: updateError.message };
+  if (gameError) {
+    console.error("[ERROR] Updating game meta:", gameError);
+    throw {
+      status: 400,
+      message: "Game update failed",
+      details: gameError.message,
+    };
   }
 
+  console.log("[DEBUG] Operation results:", results);
   return results;
 };

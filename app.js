@@ -45,7 +45,7 @@ fastify.addHook("preHandler", async (request, reply) => {
     return reply.status(401).send({ error: "Unauthorized, invalid verification token" });
   }
 
-  const isAdmin = adminIds.includes(String(decoded.player_id));
+  const isAdmin = process.env.ADMIN_IDS.includes(String(decoded.player_id));
 
   if (request.method === "POST" && request.url === `${DEFAULT_API_URL}/submissions`) {
     return;

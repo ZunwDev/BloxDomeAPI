@@ -48,7 +48,7 @@ export const updateSubmission = async (req, reply) => {
 
 export const approveSubmission = async (req, reply) => {
   try {
-    const submissions = await submissionService.approveSubmission(req.params.id);
+    const submissions = await submissionService.approveSubmission(req.params.id, req.body);
     reply.send(submissions);
   } catch (error) {
     sendError(reply, 500, "Failed to fetch submissions", error.message);
@@ -57,7 +57,7 @@ export const approveSubmission = async (req, reply) => {
 
 export const rejectSubmission = async (req, reply) => {
   try {
-    const submissions = await submissionService.rejectSubmission(req.params.id);
+    const submissions = await submissionService.rejectSubmission(req.params.id, req.body);
     reply.send(submissions);
   } catch (error) {
     sendError(reply, 500, "Failed to fetch submissions", error.message);

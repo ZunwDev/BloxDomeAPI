@@ -60,6 +60,7 @@ export const fetchGameDetails = async (place_id) => {
       *,
       genres(name),
       last_editor:code_updated_by(username, thumbnail_circle_url),
+      reviewer:code_reviewed_by(player_id, username, thumbnail_circle_url),
       codes(*)
     `
     )

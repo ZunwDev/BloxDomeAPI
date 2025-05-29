@@ -102,3 +102,5 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
   console.log("[DEBUG] Operation results:", results);
   return results;
 };
+
+export const getCodesByPlaceId = async (place_id) => supabase.from("codes").select("*").eq("place_id", place_id);

@@ -17,11 +17,16 @@ export const getSubmissions = async ({ search = "", status = "", page = 1, limit
 
   let query = supabase.from("submissions").select(
     `
-      *,
-      place:place_id ( name, icon_url ),
-      submitter:submitted_by ( username, thumbnail_circle_url ),
-      reviewer:reviewed_by ( username, thumbnail_circle_url )
-    `,
+    *,
+    place:place_id ( name, icon_url ),
+    submitter:submitted_by ( username, thumbnail_circle_url ),
+    comments:id (
+      text,
+      created_at,
+      author:author_id ( username, thumbnail_circle_url )
+    ),
+    reviewer:reviewed_by ( username, thumbnail_circle_url )
+  `,
     { count: "exact" }
   );
 
@@ -108,6 +113,12 @@ export const rejectSubmission = async (id, body) => {
     .from("submissions")
     .update({ status: "rejected", reviewed_by: body.reviewed_by, reviewed_at: new Date().toISOString() })
     .eq("id", id);
+  if (error) return { error };
+  return { data };
+};
+
+export const commentSubmission = async (id, body) => {
+  const { data, error } = await supabase.from("submission_comments").insert(body);
   if (error) return { error };
   return { data };
 };

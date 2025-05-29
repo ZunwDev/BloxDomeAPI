@@ -6,6 +6,7 @@ export default async function (fastify) {
   fastify.get(`${DEFAULT_API_URL}/submissions`, submissionsController.getSubmissions);
   fastify.get(`${DEFAULT_API_URL}/submissions/:id`, submissionsController.getSubmissionById);
   fastify.post(`${DEFAULT_API_URL}/submissions`, submissionsController.createSubmission);
+  fastify.post(`${DEFAULT_API_URL}/submissions/:id/comment`, submissionsController.commentSubmission);
   fastify.patch(`${DEFAULT_API_URL}/submissions/:id/approve`, submissionsController.approveSubmission);
   fastify.patch(`${DEFAULT_API_URL}/submissions/:id/reject`, submissionsController.rejectSubmission);
   fastify.patch(`${DEFAULT_API_URL}/submissions/:id`, submissionsController.updateSubmission);

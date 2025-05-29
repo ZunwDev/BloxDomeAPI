@@ -4,8 +4,8 @@ import { sendError } from "../utils/helpers.js";
 dotenv.config();
 
 export const createVerification = async (req, reply) => {
-  const { player_id, username } = req.body;
-  const payload = { player_id, username };
+  const { player_id, username, display_name, thumbnail_circle_url } = req.body;
+  const payload = { player_id, username, display_name, thumbnail_circle_url };
 
   try {
     await authService.ensureVerifiedUser(player_id);

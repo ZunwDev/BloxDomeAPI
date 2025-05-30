@@ -1,14 +1,46 @@
 import { supabase } from "../utils/supabase-client.js";
 import { createOrUpdateCodes } from "./codeService.js";
 
-export const getSubmissionsByPlayer = async (player_id) => {
-  const { data, error } = await supabase
-    .from("submissions")
-    .select("*")
-    .eq("player_id", player_id)
-    .order("created_at", { ascending: false });
-  if (error) return { error };
-  return { data };
+export const getSubmissionsByPlayer = async (player_id, { search = "", status = "", page = 1, limit = 12 }) => {
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  let query = supabase.from("submissions").select(
+    `
+    *,
+    place:place_id ( name, icon_url ),
+    submitter:submitted_by ( username, thumbnail_circle_url ),
+    comments:id (
+      text,
+      created_at,
+      author:author_id ( username, thumbnail_circle_url )
+    ),
+    reviewer:reviewed_by ( username, thumbnail_circle_url )
+  `,
+    { count: "exact" }
+  );
+
+  query = query.eq("submitted_by", player_id);
+
+  if (status) {
+    query = query.eq("status", status);
+  }
+
+  if (search.trim()) {
+    query = query.or(`place_id.ilike.%${search}%,submitted_by.ilike.%${search}%`);
+  }
+
+  query = query.order("created_at", { ascending: false }).range(from, to);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const sorted = data.sort((a, b) => {
+    const priority = { pending: 0, approved: 1, rejected: 2 };
+    return priority[a.status] - priority[b.status];
+  });
+
+  return sorted;
 };
 
 export const getSubmissions = async ({ search = "", status = "", page = 1, limit = 12 } = {}) => {

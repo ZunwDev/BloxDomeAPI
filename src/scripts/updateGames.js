@@ -19,7 +19,7 @@ const updateGames = async () => {
     for (const game of games) {
       const { place_id, universe_id } = game;
 
-      const gamesRes = await axios.get(`${API_URL}/roblox/games/${universe_id}`);
+      const gamesRes = await axios.get(`https://games.roblox.com/v1/games?universeIds=${universe_id}`);
       const gameData = gamesRes.data.data?.[0];
 
       if (!gameData) {
@@ -27,14 +27,18 @@ const updateGames = async () => {
         continue;
       }
 
-      const thumbnails = await axios.get(`${API_URL}/roblox/games/thumbnails?universeId=${universe_id}`);
+      const [thumbRes, iconRes] = await Promise.all([
+        axios.get(
+          `https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${universe_id}&size=768x432&format=Png&isCircular=false&countPerUniverse=5`
+        ),
+        axios.get(
+          `https://thumbnails.roblox.com/v1/games/icons?universeIds=${universe_id}&size=150x150&format=Png&isCircular=false`
+        ),
+      ]);
 
-      if (!thumbnails) {
-        console.log("There was an error fetching thumbnails");
-        continue;
-      }
-
-      const thumbData = thumbnails.data;
+      const thumbnails = thumbRes.data?.data?.[0]?.thumbnails || [];
+      const thumbnail_url = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].imageUrl : null;
+      const icon_url = iconRes.data?.data?.[0]?.imageUrl || null;
 
       const updatedGameData = {
         creator: gameData.creator.name,
@@ -46,8 +50,8 @@ const updateGames = async () => {
         name: gameData.name,
         visits: gameData.visits,
         playing: gameData.playing,
-        thumbnail_url: thumbData.thumbnail_url,
-        icon_url: thumbData.icon_url,
+        thumbnail_url,
+        icon_url,
       };
 
       const { data: existingGame, error: checkError } = await supabase

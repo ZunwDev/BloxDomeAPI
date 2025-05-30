@@ -4,47 +4,56 @@ import { supabase } from "../utils/supabase-client.js";
 
 export const fetchGames = async (queryParams) => {
   const { page = 1, limit = 12, sort = "latest", updated = "all", genre_id, codes = "all", search = "" } = queryParams;
-
   const offset = (page - 1) * limit;
 
-  let query = supabase.from("games").select(
+  let gameQuery = supabase.from("games").select(
     `
-      *,
-      genres(name),
-      codes(count:place_id, active)
+      name,
+      place_id,
+      playing,
+      updated_at,
+      icon_url,
+      genres(name)
     `,
     { count: "exact" }
   );
 
-  if (genre_id) query = query.eq("genre_id", genre_id);
-  if (search.trim()) query = query.ilike("name", `%${search.trim()}%`);
+  if (genre_id) gameQuery = gameQuery.eq("genre_id", genre_id);
+  if (search.trim()) gameQuery = gameQuery.ilike("name", `%${search.trim()}%`);
 
   if (updated !== "all") {
     const daysMap = { one_day: 1, three_days: 3, week: 7 };
     const days = daysMap[updated];
     if (days) {
       const dateThreshold = new Date(Date.now() - days * 864e5).toISOString();
-      query = query.gte("updated_at", dateThreshold);
+      gameQuery = gameQuery.gte("updated_at", dateThreshold);
     }
   }
 
-  query =
-    sort === "most_players" ? query.order("playing", { ascending: false }) : query.order("updated_at", { ascending: false });
+  gameQuery =
+    sort === "most_players"
+      ? gameQuery.order("playing", { ascending: false })
+      : gameQuery.order("updated_at", { ascending: false });
 
-  query = query.range(offset, offset + limit - 1);
+  gameQuery = gameQuery.range(offset, offset + limit - 1);
 
-  const { data: games, error } = await query;
-  if (error) throw new Error(error.message);
+  const { data: games, error: gamesError } = await gameQuery;
+  if (gamesError) throw new Error(gamesError.message);
+  const { data: codesData, error: codesError } = await supabase.from("codes").select("place_id").eq("active", true);
 
-  // Aggregate active code counts
-  const gamesWithCodeCounts = games.map((game) => {
-    const activeCodes = game.codes?.filter((c) => c.active)?.length || 0;
-    return {
-      ...game,
-      genre: game.genres?.name || null,
-      active_codes: activeCodes,
-    };
-  });
+  if (codesError) throw new Error(codesError.message);
+
+  const codeCountMap = {};
+  for (let i = 0; i < codesData.length; i++) {
+    const place_id = codesData[i].place_id;
+    codeCountMap[place_id] = (codeCountMap[place_id] || 0) + 1;
+  }
+
+  const gamesWithCodeCounts = games.map((game) => ({
+    ...game,
+    genre: game.genres?.name || null,
+    active_codes: codeCountMap[game.place_id] || 0,
+  }));
 
   if (codes === "with-codes") return gamesWithCodeCounts.filter((g) => g.active_codes > 0);
   if (codes === "without-codes") return gamesWithCodeCounts.filter((g) => g.active_codes === 0);
@@ -98,12 +107,17 @@ export const fetchSimilarGames = async (place_id) => {
   ];
   const match = keywords.find((k) => game.name.toLowerCase().includes(k.toLowerCase()));
 
-  let query = supabase.from("games").select("*").neq("place_id", place_id);
+  let query = supabase.from("games").select("place_id, name, icon_url").neq("place_id", place_id);
   query = match ? query.ilike("name", `%${match}%`) : query.eq("genre_id", game.genre_id);
 
   let { data } = await query.limit(10);
   if (!data.length && match) {
-    const fallback = await supabase.from("games").select("*").neq("place_id", place_id).eq("genre_id", game.genre_id).limit(10);
+    const fallback = await supabase
+      .from("games")
+      .select("place_id, name, icon_url")
+      .neq("place_id", place_id)
+      .eq("genre_id", game.genre_id)
+      .limit(10);
     data = fallback.data;
   }
 

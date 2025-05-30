@@ -3,7 +3,7 @@ import { sendError } from "../utils/helpers.js";
 
 export const getSubmissionsByPlayer = async (req, reply) => {
   try {
-    const submissions = await submissionService.getSubmissionsByPlayer(req.params.player_id);
+    const submissions = await submissionService.getSubmissionsByPlayer(req.params.player_id, req.query);
     reply.send(submissions);
   } catch (error) {
     sendError(reply, 500, "Failed to fetch submissions", error.message);

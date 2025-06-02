@@ -15,6 +15,7 @@ export const createVerification = async (req, reply) => {
       sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
+      domain: process.env.COOKIE_DOMAIN,
       maxAge: 60 * 60 * 24 * 60,
     };
 

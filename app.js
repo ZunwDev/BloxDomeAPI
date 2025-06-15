@@ -46,13 +46,14 @@ fastify.addHook("preHandler", async (request, reply) => {
   }
 
   const isAdmin = process.env.ADMIN_IDS.includes(String(decoded.player_id));
+  const isReviewer = process.env.REVIEWER_IDS.includes(String(decoded.player_id));
 
   if (request.method === "POST" && request.url === `${DEFAULT_API_URL}/submissions`) {
     return;
   }
 
   if ((request.method === "PATCH" || request.method === "POST") && request.url.startsWith(`${DEFAULT_API_URL}/submissions`)) {
-    if (!isAdmin) {
+    if (!isAdmin || !isReviewer) {
       return reply.status(403).send({ error: "Forbidden for non-admins" });
     }
   }

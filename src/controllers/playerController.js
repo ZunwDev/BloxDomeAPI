@@ -57,7 +57,7 @@ export const getBookmarkIds = async (req, reply) => {
   try {
     const { data, error } = await playerService.getBookmarks(req.params.player_id);
     if (error || !data) return sendError(reply, 500, "Player not found", error?.message);
-    reply.send({ data: data.bookmarks });
+    reply.send(data.bookmarks);
   } catch (err) {
     sendError(reply, 500, "Unexpected error", err.message);
   }
@@ -67,7 +67,7 @@ export const getBookmarkedGames = async (req, reply) => {
   try {
     const { data, error } = await playerService.getBookmarkedGames(req.params.player_id, req.query.codes);
     if (error) return sendError(reply, 500, "Failed to fetch games", error.message);
-    reply.send({ data });
+    reply.send(data);
   } catch (err) {
     sendError(reply, 500, "Unexpected error", err.message);
   }

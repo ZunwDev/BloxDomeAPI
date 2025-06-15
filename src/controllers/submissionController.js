@@ -1,19 +1,10 @@
 import * as submissionService from "../services/submissionService.js";
 import { sendError } from "../utils/helpers.js";
 
-export const getSubmissionsByPlayer = async (req, reply) => {
-  try {
-    const submissions = await submissionService.getSubmissionsByPlayer(req.params.player_id, req.query);
-    reply.send(submissions);
-  } catch (error) {
-    sendError(reply, 500, "Failed to fetch submissions", error.message);
-  }
-};
-
 export const getSubmissions = async (req, reply) => {
   try {
     const submissions = await submissionService.getSubmissions(req.query);
-    reply.send({ page: Number(req.query.page || 1), limit: Number(req.query.limit || 12), data: submissions });
+    reply.send(submissions);
   } catch (error) {
     console.log(error);
     sendError(reply, 500, "Failed to fetch submissions", error.message);

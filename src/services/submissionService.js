@@ -1,38 +1,36 @@
 import { supabase } from "../utils/supabase-client.js";
 import { createOrUpdateCodes } from "./codeService.js";
 
-export const getSubmissionsByPlayer = async (player_id, { search = "", status = "", page = 1, limit = 12 }) => {
+export const getSubmissions = async ({ status = "", page = 1, limit = 12, player_id } = {}) => {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
   let query = supabase.from("submissions").select(
     `
-    *,
-    place:place_id ( name, icon_url ),
-    submitter:submitted_by ( username, thumbnail_circle_url ),
-    comments:id (
-      text,
-      created_at,
-      author:author_id ( username, thumbnail_circle_url )
-    ),
-    reviewer:reviewed_by ( username, thumbnail_circle_url )
-  `,
+      *,
+      place:place_id ( name, icon_url ),
+      submitter:submitted_by ( username, thumbnail_circle_url ),
+      comments:id (
+        text,
+        created_at,
+        author:author_id ( username, thumbnail_circle_url )
+      ),
+      reviewer:reviewed_by ( username, thumbnail_circle_url )
+    `,
     { count: "exact" }
   );
 
-  query = query.eq("submitted_by", player_id);
+  if (player_id) {
+    query = query.eq("submitted_by", player_id);
+  }
 
   if (status) {
     query = query.eq("status", status);
   }
 
-  if (search.trim()) {
-    query = query.or(`place_id.ilike.%${search}%,submitted_by.ilike.%${search}%`);
-  }
-
   query = query.order("created_at", { ascending: false }).range(from, to);
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) throw new Error(error.message);
 
   const sorted = data.sort((a, b) => {
@@ -40,47 +38,18 @@ export const getSubmissionsByPlayer = async (player_id, { search = "", status = 
     return priority[a.status] - priority[b.status];
   });
 
-  return sorted;
-};
+  const total = count ?? 0;
+  const totalPages = Math.ceil(total / limit);
 
-export const getSubmissions = async ({ search = "", status = "", page = 1, limit = 12 } = {}) => {
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
-
-  let query = supabase.from("submissions").select(
-    `
-    *,
-    place:place_id ( name, icon_url ),
-    submitter:submitted_by ( username, thumbnail_circle_url ),
-    comments:id (
-      text,
-      created_at,
-      author:author_id ( username, thumbnail_circle_url )
-    ),
-    reviewer:reviewed_by ( username, thumbnail_circle_url )
-  `,
-    { count: "exact" }
-  );
-
-  if (status) {
-    query = query.eq("status", status);
-  }
-
-  if (search.trim()) {
-    query = query.or(`place_id.ilike.%${search}%,submitted_by.ilike.%${search}%`);
-  }
-
-  query = query.order("created_at", { ascending: false }).range(from, to);
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  const sorted = data.sort((a, b) => {
-    const priority = { pending: 0, approved: 1, rejected: 2 };
-    return priority[a.status] - priority[b.status];
-  });
-
-  return sorted;
+  return {
+    data: sorted,
+    total,
+    page,
+    limit,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1,
+  };
 };
 
 export const getSubmissionById = async (id) => {
@@ -115,19 +84,25 @@ export const approveSubmission = async (id, body) => {
     .eq("id", id)
     .single();
 
-  if (fetchError) throw { status: 404, message: "Submission not found", details: fetchError.message };
+  if (fetchError) {
+    console.error("Submission fetch error:", fetchError);
+    throw { status: 404, message: "Submission not found", details: fetchError.message };
+  }
 
   const { reviewed_by } = body;
   const reviewed_at = new Date().toISOString();
 
-  const newCodes = submission.submission_data[0].new_codes || [];
+  const newCodes = submission.submission_data?.new_codes || [];
 
   const { error: updateError } = await supabase
     .from("submissions")
     .update({ status: "approved", reviewed_by, reviewed_at })
     .eq("id", id);
 
-  if (updateError) throw { status: 400, message: "Failed to approve submission", details: updateError.message };
+  if (updateError) {
+    console.error("Submission update error:", updateError);
+    throw { status: 400, message: "Failed to approve submission", details: updateError.message };
+  }
 
   const result = await createOrUpdateCodes({
     place_id: submission.place_id,

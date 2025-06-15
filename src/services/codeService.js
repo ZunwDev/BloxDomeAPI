@@ -4,6 +4,8 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
   const results = { created: [], updated: [], skipped: [], deleted: [] };
   const now = new Date().toISOString();
 
+  console.log("[DEBUG] Incoming codes:", codes);
+
   // Fetch existing codes
   const { data: existingCodes, error: existingError } = await supabase.from("codes").select("*").eq("place_id", place_id);
 
@@ -16,6 +18,8 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
     };
   }
 
+  console.log("[DEBUG] Existing codes:", existingCodes);
+
   const existingMap = Object.fromEntries(existingCodes.map((c) => [c.code, c]));
   const incomingCodeSet = new Set(codes.map((c) => c.code));
 
@@ -23,6 +27,10 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
   const codesToDelete = existingCodes.filter((ec) => !incomingCodeSet.has(ec.code));
 
   if (codesToDelete.length > 0) {
+    console.log(
+      "[DEBUG] Codes to delete:",
+      codesToDelete.map((c) => c.code)
+    );
     const { error: deleteError } = await supabase
       .from("codes")
       .delete()
@@ -45,21 +53,35 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
     const existing = existingMap[code.code];
 
     if (!existing) {
-      toInsert.push({ ...code, place_id, added_by, updated_at: now });
+      // Make sure you set all required fields
+      toInsert.push({
+        ...code,
+        place_id,
+        added_by,
+        updated_at: now,
+        created_at: now,
+      });
     } else {
-      const isSame =
-        JSON.stringify({ rewards: existing.rewards, active: existing.active }) ===
-        JSON.stringify({ rewards: code.rewards, active: code.active });
+      // Compare rewards and active status
+      const isSame = existing.rewards === code.rewards && existing.active === code.active;
 
       if (isSame) {
         results.skipped.push(existing);
       } else {
-        toUpdate.push({ ...code, id: existing.id, updated_at: now });
+        toUpdate.push({
+          ...code,
+          id: existing.id,
+          updated_at: now,
+        });
       }
     }
   }
 
-  if (toInsert.length) {
+  if (toInsert.length > 0) {
+    console.log(
+      "[DEBUG] Codes to insert:",
+      toInsert.map((c) => c.code)
+    );
     const { data, error } = await supabase.from("codes").insert(toInsert).select();
     if (error) {
       console.error("[ERROR] Inserting codes:", error);
@@ -68,8 +90,11 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
     results.created = data;
   }
 
-  // Update
-  if (toUpdate.length) {
+  if (toUpdate.length > 0) {
+    console.log(
+      "[DEBUG] Codes to update:",
+      toUpdate.map((c) => c.code)
+    );
     const { data, error } = await supabase
       .from("codes")
       .upsert(toUpdate, { onConflict: ["id"] })
@@ -81,7 +106,7 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
     results.updated = data;
   }
 
-  // Update game
+  // Update game meta
   const { error: gameError } = await supabase
     .from("games")
     .update({
@@ -90,6 +115,7 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
       code_reviewed_by: reviewed_by,
     })
     .eq("place_id", place_id);
+
   if (gameError) {
     console.error("[ERROR] Updating game meta:", gameError);
     throw {

@@ -4,7 +4,7 @@ import { sendError } from "../utils/helpers.js";
 export const getGames = async (req, reply) => {
   try {
     const games = await gameService.fetchGames(req.query);
-    reply.send({ page: Number(req.query.page || 1), limit: Number(req.query.limit || 12), data: games });
+    reply.send(games);
   } catch (err) {
     console.log(err);
     sendError(reply, 500, "Failed to fetch games", err.message);

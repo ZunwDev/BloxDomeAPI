@@ -3,7 +3,8 @@ import { ROBLOX_API_URL, ROBLOX_GAMES_URL, ROBLOX_THUMBNAIL_URL } from "../utils
 import { supabase } from "../utils/supabase-client.js";
 
 export const fetchGames = async (queryParams) => {
-  const { page = 1, limit = 12, sort = "latest", updated = "all", genre_id, codes = "all", search = "" } = queryParams;
+  const { page = 1, limit = 12, sort = "latest", updated = "all", genre_id, search = "" } = queryParams;
+
   const offset = (page - 1) * limit;
 
   let gameQuery = supabase.from("games").select(
@@ -37,15 +38,15 @@ export const fetchGames = async (queryParams) => {
 
   gameQuery = gameQuery.range(offset, offset + limit - 1);
 
-  const { data: games, error: gamesError } = await gameQuery;
+  const { data: games, count: total, error: gamesError } = await gameQuery;
   if (gamesError) throw new Error(gamesError.message);
+
   const { data: codesData, error: codesError } = await supabase.from("codes").select("place_id").eq("active", true);
 
   if (codesError) throw new Error(codesError.message);
 
   const codeCountMap = {};
-  for (let i = 0; i < codesData.length; i++) {
-    const place_id = codesData[i].place_id;
+  for (const { place_id } of codesData) {
     codeCountMap[place_id] = (codeCountMap[place_id] || 0) + 1;
   }
 
@@ -55,10 +56,17 @@ export const fetchGames = async (queryParams) => {
     active_codes: codeCountMap[game.place_id] || 0,
   }));
 
-  if (codes === "with-codes") return gamesWithCodeCounts.filter((g) => g.active_codes > 0);
-  if (codes === "without-codes") return gamesWithCodeCounts.filter((g) => g.active_codes === 0);
+  const totalPages = Math.ceil(total / limit);
 
-  return gamesWithCodeCounts;
+  return {
+    data: gamesWithCodeCounts,
+    total,
+    page,
+    limit,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1,
+  };
 };
 
 export const fetchGameDetails = async (place_id) => {
@@ -117,7 +125,7 @@ export const fetchSimilarGames = async (place_id) => {
       .select("place_id, name, icon_url")
       .neq("place_id", place_id)
       .eq("genre_id", game.genre_id)
-      .limit(10);
+      .limit(5);
     data = fallback.data;
   }
 

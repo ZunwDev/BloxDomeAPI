@@ -59,6 +59,20 @@ export const getSubmissionById = async (id) => {
 };
 
 export const createSubmission = async (body) => {
+  const { count, error: countError } = await supabase
+    .from("submissions")
+    .select("*", { count: "exact", head: true })
+    .eq("submitted_by", body.submitted_by)
+    .eq("status", "pending");
+
+  if (count >= 5) {
+    throw {
+      status: 429,
+      message: "Submission limit reached",
+      details: "You can only have 5 pending submissions at a time.",
+    };
+  }
+
   const { data, error } = await supabase.from("submissions").insert([
     {
       submitted_by: body.submitted_by,

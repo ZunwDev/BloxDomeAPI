@@ -21,11 +21,11 @@ export const createNewPlayer = async (username, added_by) => {
   });
 
   const robloxUser = userRes.data.data?.[0];
-  if (!robloxUser) return { error: "not_found" };
+  if (!robloxUser) throw { status: 404, message: "User not found on Roblox" };
 
   const { data: existingPlayer } = await supabase.from("players").select("*").eq("player_id", robloxUser.id).single();
 
-  if (existingPlayer) return { error: "exists" };
+  if (existingPlayer) throw { status: 409, message: "Player already exists" };
 
   const [thumbRes, circularRes] = await Promise.all([
     axios.get(`${ROBLOX_THUMBNAIL_URL}/v1/users/avatar?userIds=${robloxUser.id}&size=250x250&format=Webp`),
@@ -45,7 +45,7 @@ export const createNewPlayer = async (username, added_by) => {
   };
 
   const { data, error } = await supabase.from("players").insert([playerData]).select().single();
-  if (error) return { error };
+  if (error) throw { status: 400, message: "Failed to create player", details: error.message };
 
   if (added_by) {
     await supabase.from("players").update({ last_activity: new Date().toISOString() }).eq("player_id", added_by);
@@ -57,34 +57,43 @@ export const createNewPlayer = async (username, added_by) => {
 export const toggleBookmark = async (player_id, place_id) => {
   const { data, error } = await supabase.from("players").select("bookmarks").eq("player_id", player_id).single();
 
-  if (error || !data) return { error };
+  if (error || !data) throw { status: 404, message: "Player not found" };
+  let bookmarks = data.bookmarks || [];
 
-  let bookmarks = Array.isArray(data.bookmarks) ? data.bookmarks : [];
-  const pid = Number(place_id);
-  if (Number.isNaN(pid)) return { error: "invalid_place_id" };
+  if (!/^\d+$/.test(place_id)) throw { status: 400, message: "Invalid place_id" };
 
-  if (bookmarks.includes(pid)) bookmarks = bookmarks.filter((id) => id !== pid);
-  else bookmarks.push(pid);
+  if (bookmarks.includes(place_id)) {
+    bookmarks = bookmarks.filter((id) => id !== place_id);
+  } else {
+    bookmarks.push(place_id);
+  }
 
   const { error: updateError } = await supabase
     .from("players")
     .update({ bookmarks, last_activity: new Date().toISOString() })
     .eq("player_id", player_id);
 
-  return updateError ? { error: updateError } : { bookmarks };
+  if (updateError) throw { status: 500, message: "Failed to update bookmarks", details: updateError.message };
+
+  return { bookmarks };
 };
 
-export const getBookmarks = (player_id) => supabase.from("players").select("bookmarks").eq("player_id", player_id).single();
+export const getBookmarks = async (player_id) => {
+  const { data, error } = await supabase.from("players").select("bookmarks").eq("player_id", player_id).single();
+
+  if (error || !data) throw { status: 404, message: "Player not found" };
+
+  return { data };
+};
 
 export const getBookmarkedGames = async (player_id, codes = "all") => {
-  const { data: playerData, error } = await getBookmarks(player_id);
-  if (error || !playerData) return { error };
+  const { data: playerData } = await getBookmarks(player_id);
 
   const ids = playerData.bookmarks;
   if (!ids?.length) return { data: [] };
 
   const { data: games, error: gamesError } = await supabase.from("games").select("*").in("place_id", ids);
-  if (gamesError) return { error: gamesError };
+  if (gamesError) throw { status: 500, message: "Failed to fetch games", details: gamesError.message };
 
   const { data: codesData } = await supabase.from("codes").select("place_id, active").in("place_id", ids);
 

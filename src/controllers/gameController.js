@@ -1,48 +1,27 @@
 import * as gameService from "../services/gameService.js";
-import { sendError } from "../utils/helpers.js";
+import { withErrorHandler } from "../utils/helpers.js";
 
-export const getGames = async (req, reply) => {
-  try {
-    const games = await gameService.fetchGames(req.query);
-    reply.send(games);
-  } catch (err) {
-    console.log(err);
-    sendError(reply, 500, "Failed to fetch games", err.message);
-  }
-};
+export const getGames = withErrorHandler(async ({ query }, reply) => {
+  const games = await gameService.fetchGames(query);
+  reply.status(200).send(games);
+});
 
-export const getGame = async (req, reply) => {
-  try {
-    const data = await gameService.fetchGameDetails(req.params.place_id);
-    reply.send(data);
-  } catch (err) {
-    sendError(reply, 404, err.message);
-  }
-};
+export const getGame = withErrorHandler(async ({ params }, reply) => {
+  const data = await gameService.fetchGameDetails(params.place_id);
+  reply.status(200).send(data);
+});
 
-export const getSimilarGames = async (req, reply) => {
-  try {
-    const data = await gameService.fetchSimilarGames(req.params.place_id);
-    reply.send(data);
-  } catch (err) {
-    sendError(reply, 500, "Failed to fetch similar games", err.message);
-  }
-};
+export const getSimilarGames = withErrorHandler(async ({ params }, reply) => {
+  const data = await gameService.fetchSimilarGames(params.place_id);
+  reply.status(200).send(data);
+});
 
-export const createGame = async (req, reply) => {
-  try {
-    const data = await gameService.createGame(req.body.place_id, req.body.added_by);
-    reply.status(201).send(data);
-  } catch (err) {
-    sendError(reply, 400, "Failed to create game", err.message);
-  }
-};
+export const createGame = withErrorHandler(async ({ body }, reply) => {
+  const data = await gameService.createGame(body.place_id, body.added_by);
+  reply.status(201).send(data);
+});
 
-export const getGenres = async (req, reply) => {
-  try {
-    const data = await gameService.getGenres(req.query.name);
-    reply.send(data);
-  } catch (err) {
-    sendError(reply, 500, "Failed to fetch genres", err.message);
-  }
-};
+export const getGenres = withErrorHandler(async ({ query }, reply) => {
+  const data = await gameService.getGenres(query.name);
+  reply.status(200).send(data);
+});

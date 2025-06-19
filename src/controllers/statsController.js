@@ -1,11 +1,7 @@
 import * as statsService from "../services/statsService.js";
-import { sendError } from "../utils/helpers.js";
+import { withErrorHandler } from "../utils/helpers.js";
 
-export const getStats = async (req, reply) => {
-  try {
-    const stats = await statsService.getStats();
-    reply.send(stats);
-  } catch (error) {
-    sendError(reply, 500, "Failed to fetch stats", error.message);
-  }
-};
+export const getStats = withErrorHandler(async (_req, reply) => {
+  const stats = await statsService.getStats();
+  reply.status(200).send(stats);
+});

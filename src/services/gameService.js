@@ -4,7 +4,6 @@ import { supabase } from "../utils/supabase-client.js";
 
 export const fetchGames = async (queryParams) => {
   const { page = 1, limit = 12, sort = "latest", updated = "all", genre_id, search = "" } = queryParams;
-
   const offset = (page - 1) * limit;
 
   let gameQuery = supabase.from("games").select(

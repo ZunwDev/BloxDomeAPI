@@ -1,66 +1,37 @@
 import * as submissionService from "../services/submissionService.js";
-import { sendError } from "../utils/helpers.js";
+import { withErrorHandler } from "../utils/helpers.js";
 
-export const getSubmissions = async (req, reply) => {
-  try {
-    const submissions = await submissionService.getSubmissions(req.query);
-    reply.send(submissions);
-  } catch (error) {
-    console.log(error);
-    sendError(reply, 500, "Failed to fetch submissions", error.message);
-  }
-};
+export const getSubmissions = withErrorHandler(async ({ query }, reply) => {
+  const submissions = await submissionService.getSubmissions(query);
+  reply.status(200).send(submissions);
+});
 
-export const getSubmissionById = async (req, reply) => {
-  try {
-    const submissions = await submissionService.getSubmissionById(req.params.id);
-    reply.send(submissions);
-  } catch (error) {
-    sendError(reply, 500, "Failed to fetch submissions", error.message);
-  }
-};
+export const getSubmissionById = withErrorHandler(async ({ params }, reply) => {
+  const submissions = await submissionService.getSubmissionById(params.id);
+  reply.status(200).send(submissions);
+});
 
-export const createSubmission = async (req, reply) => {
-  try {
-    const submissions = await submissionService.createSubmission(req.body);
-    reply.send(submissions);
-  } catch (error) {
-    sendError(reply, 500, "Failed to fetch submissions", error.message);
-  }
-};
+export const createSubmission = withErrorHandler(async ({ body }, reply) => {
+  const submissions = await submissionService.createSubmission(body);
+  reply.status(201).send(submissions);
+});
 
-export const updateSubmission = async (req, reply) => {
-  try {
-    const submissions = await submissionService.updateSubmission(req.params.id, req.body);
-    reply.send(submissions);
-  } catch (error) {
-    sendError(reply, 500, "Failed to fetch submissions", error.message);
-  }
-};
+export const updateSubmission = withErrorHandler(async ({ params, body }, reply) => {
+  await submissionService.updateSubmission(params.id, body);
+  reply.status(204);
+});
 
-export const approveSubmission = async (req, reply) => {
-  try {
-    const submissions = await submissionService.approveSubmission(req.params.id, req.body);
-    reply.send(submissions);
-  } catch (error) {
-    sendError(reply, 500, "Failed to fetch submissions", error.message);
-  }
-};
+export const approveSubmission = withErrorHandler(async ({ params, body }, reply) => {
+  await submissionService.approveSubmission(params.id, body);
+  reply.status(204);
+});
 
-export const rejectSubmission = async (req, reply) => {
-  try {
-    const submissions = await submissionService.rejectSubmission(req.params.id, req.body);
-    reply.send(submissions);
-  } catch (error) {
-    sendError(reply, 500, "Failed to fetch submissions", error.message);
-  }
-};
+export const rejectSubmission = withErrorHandler(async ({ params, body }, reply) => {
+  await submissionService.rejectSubmission(params.id, body);
+  reply.status(204);
+});
 
-export const commentSubmission = async (req, reply) => {
-  try {
-    const submissions = await submissionService.commentSubmission(req.params.id, req.body);
-    reply.send(submissions);
-  } catch (error) {
-    sendError(reply, 500, "Failed to fetch submissions", error.message);
-  }
-};
+export const commentSubmission = withErrorHandler(async ({ params, body }, reply) => {
+  await submissionService.commentSubmission(params.id, body);
+  reply.status(201);
+});

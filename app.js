@@ -33,7 +33,7 @@ fastify.addHook("preHandler", async (request, reply) => {
     return;
   }
 
-  const verificationToken = request.cookies._rocodesVerification;
+  const verificationToken = request.cookies._bloxdomeVerification;
   if (!verificationToken) {
     return reply.status(401).send({ error: "Unauthorized, no verification token" });
   }

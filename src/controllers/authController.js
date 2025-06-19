@@ -18,14 +18,14 @@ export const createVerification = withErrorHandler(async ({ body }, reply) => {
     maxAge: 60 * 60 * 24 * 60,
   };
 
-  reply.setCookie("_rocodesVerification", privateToken, { ...cookieOptions, httpOnly: true });
-  reply.setCookie("_rocodesData", publicToken, { ...cookieOptions, httpOnly: false });
+  reply.setCookie("_bloxdomeVerification", privateToken, { ...cookieOptions, httpOnly: true });
+  reply.setCookie("_bloxdomeData", publicToken, { ...cookieOptions, httpOnly: false });
 
   return reply.status(201).send({ success: true });
 });
 
 export const logout = withErrorHandler(async (_req, reply) => {
-  reply.clearCookie("_rocodesVerification", { path: "/" });
-  reply.clearCookie("_rocodesData", { path: "/" });
+  reply.clearCookie("_bloxdomeVerification", { path: "/" });
+  reply.clearCookie("_bloxdomeData", { path: "/" });
   return reply.status(200).send({ success: true });
 });

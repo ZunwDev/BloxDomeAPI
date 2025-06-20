@@ -89,7 +89,7 @@ const scheduleUpdate = () => {
   setInterval(() => {
     console.log(`Starting update for page ${page}`);
     updateGames();
-  }, 1 * 60 * 1000);
+  }, 30 * 60 * 1000);
 };
 
 export { scheduleUpdate, updateGames };

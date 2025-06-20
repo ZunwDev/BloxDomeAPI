@@ -9,14 +9,54 @@ import { DEFAULT_API_URL } from "./src/utils/config.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-const fastify = Fastify({
-  logger: {
-    level: "info",
-    redact: {
-      paths: ["req.headers.cookie", "req.headers.authorization"],
-      remove: true,
+const isDev = process.env.NODE_ENV !== "production";
+
+const baseLogger = {
+  level: isDev ? "debug" : "info",
+  redact: {
+    paths: [
+      "req.headers.cookie",
+      "req.headers.authorization",
+      "req.body.password",
+      "req.body.token",
+      "req.headers['x-api-key']",
+    ],
+    remove: true,
+  },
+  serializers: {
+    req(request) {
+      return {
+        method: request.method,
+        url: request.url,
+        remoteAddress: request.ip,
+        headers: {
+          host: request.headers.host,
+          "user-agent": request.headers["user-agent"],
+        },
+      };
+    },
+    res(reply) {
+      return {
+        statusCode: reply.statusCode,
+      };
     },
   },
+};
+
+const devLogger = {
+  ...baseLogger,
+  transport: {
+    target: "pino-pretty",
+    options: {
+      colorize: true,
+      translateTime: "SYS:standard",
+      ignore: "pid,hostname",
+    },
+  },
+};
+
+const fastify = Fastify({
+  logger: isDev ? devLogger : baseLogger,
 });
 
 fastify.register(jwt, {

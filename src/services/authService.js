@@ -8,15 +8,21 @@ export const createTokens = (payload) => {
 };
 
 export const ensureVerifiedUser = async (player_id) => {
+  const now = new Date().toISOString();
+
   const { data: existing, error: fetchError } = await supabase
     .from("verified")
     .select("player_id")
     .eq("player_id", player_id)
-    .maybeSingle();
+    .single();
 
   if (fetchError) throw fetchError;
+
   if (!existing) {
     const { error: insertError } = await supabase.from("verified").insert([{ player_id }]);
     if (insertError) throw insertError;
+  } else {
+    const { error: updateError } = await supabase.from("verified").update({ verified_at: now }).eq("player_id", player_id);
+    if (updateError) throw updateError;
   }
 };

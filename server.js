@@ -10,7 +10,7 @@ try {
     host: "0.0.0.0",
   });
 
-  !process.env.TEST_MODE ? scheduleUpdate() : null;
+  process.env.TEST_MODE === "false" ? scheduleUpdate() : null;
 } catch (err) {
   app.log.error(err);
   process.exit(1);

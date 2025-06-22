@@ -11,10 +11,10 @@ export const createVerification = withErrorHandler(async ({ body }, reply) => {
   const { privateToken, publicToken } = authService.createTokens(payload);
 
   const cookieOptions = {
-    sameSite: process.env.TEST_MODE ? "Lax" : "None",
-    secure: !process.env.TEST_MODE,
+    sameSite: process.env.TEST_MODE === "true" ? "Lax" : "None",
+    secure: !process.env.TEST_MODE === "true",
     path: "/",
-    domain: process.env.TEST_MODE ? undefined : process.env.COOKIE_DOMAIN,
+    domain: process.env.TEST_MODE === "true" ? undefined : process.env.COOKIE_DOMAIN,
     maxAge: 60 * 60 * 24 * 60,
   };
 
@@ -25,7 +25,15 @@ export const createVerification = withErrorHandler(async ({ body }, reply) => {
 });
 
 export const logout = withErrorHandler(async (_req, reply) => {
-  reply.clearCookie("_bloxdomeVerification", { path: "/" });
-  reply.clearCookie("_bloxdomeData", { path: "/" });
+  reply.clearCookie("_bloxdomeVerification", {
+    path: "/",
+    domain: process.env.COOKIE_DOMAIN,
+    secure: !process.env.TEST_MODE === "true",
+  });
+  reply.clearCookie("_bloxdomeData", {
+    path: "/",
+    domain: process.env.COOKIE_DOMAIN,
+    secure: !process.env.TEST_MODE === "true",
+  });
   return reply.status(200).send({ success: true });
 });

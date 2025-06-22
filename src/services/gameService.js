@@ -10,6 +10,7 @@ export const fetchGames = async (queryParams) => {
     `
       name,
       place_id,
+      universe_id,
       playing,
       updated_at,
       icon_url,

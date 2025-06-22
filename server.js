@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import app from "./app.js";
 dotenv.config();
 
-//import { scheduleUpdate } from "./src/scripts/updateGames.js";
+import { scheduleUpdate } from "./src/scripts/updateGames.js";
 
 try {
   await app.listen({
@@ -10,7 +10,7 @@ try {
     host: "0.0.0.0",
   });
 
-  //process.env.NODE_ENV === "production" ? scheduleUpdate() : null;
+  !process.env.TEST_MODE ? scheduleUpdate() : null;
 } catch (err) {
   app.log.error(err);
   process.exit(1);

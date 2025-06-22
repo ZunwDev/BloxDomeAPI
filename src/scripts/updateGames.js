@@ -3,16 +3,16 @@ import { supabase } from "../utils/supabase-client.js";
 
 const API_URL = "http://localhost:3001/api/v1";
 const BATCH_SIZE = 20;
-
 let page = 1;
 
 const updateGames = async () => {
   try {
     const response = await axios.get(`${API_URL}/games?page=${page}&limit=${BATCH_SIZE}`);
-    const games = response.data.data;
+    const { data: games, hasNextPage, totalPages } = response.data;
 
-    if (games.length === 0) {
-      console.log("All games have been processed.");
+    if (!games || games.length === 0) {
+      console.log("[GAME DATA UPDATE] No games found on this page, resetting to page 1.");
+      page = 1;
       return;
     }
 
@@ -23,7 +23,7 @@ const updateGames = async () => {
       const gameData = gamesRes.data.data?.[0];
 
       if (!gameData) {
-        console.log(`Game data for place_id ${place_id} not found.`);
+        console.log(`[GAME DATA UPDATE] Game data for place_id ${place_id} not found.`);
         continue;
       }
 
@@ -61,7 +61,7 @@ const updateGames = async () => {
         .single();
 
       if (checkError && checkError.code !== "PGRST100") {
-        console.error("Error checking game:", checkError);
+        console.error("[GAME DATA UPDATE] Error checking game:", checkError);
         continue;
       }
 
@@ -69,27 +69,37 @@ const updateGames = async () => {
         const { error: updateError } = await supabase.from("games").update(updatedGameData).eq("place_id", place_id);
 
         if (updateError) {
-          console.error(`Failed to update game with place_id ${place_id}:`, updateError);
+          console.error(`[GAME DATA UPDATE] Failed to update game with place_id ${place_id}:`, updateError);
         } else {
-          console.log(`Updated game with place_id: ${place_id}`);
+          console.log(`[GAME DATA UPDATE] Updated game with place_id: ${place_id}`);
         }
       } else {
-        console.log(`Game with place_id ${place_id} does not exist, skipping.`);
+        console.log(`[GAME DATA UPDATE] Game with place_id ${place_id} does not exist, skipping.`);
       }
     }
 
-    console.log(`Processed page ${page} of games.`);
-    page += 1;
+    console.log(`[GAME DATA UPDATE] Processed page ${page} of ${totalPages} total pages.`);
+
+    if (hasNextPage) {
+      page += 1;
+    } else {
+      console.log("[GAME DATA UPDATE] Reached the last page, resetting to page 1 for next cycle.");
+      page = 1;
+    }
   } catch (err) {
-    console.error("Error in fetching or processing games:", err);
+    console.error("[GAME DATA UPDATE] Error in fetching or processing games:", err);
+    if (err.response?.status === 404 || err.response?.status === 400) {
+      console.log("[GAME DATA UPDATE] Pagination error detected, resetting to page 1.");
+      page = 1;
+    }
   }
 };
 
 const scheduleUpdate = () => {
   setInterval(() => {
-    console.log(`Starting update for page ${page}`);
+    console.log(`[GAME DATA UPDATE] Starting update for page ${page}`);
     updateGames();
-  }, 30 * 60 * 1000);
+  }, 30 * 60 * 1000); // 30 minutes
 };
 
 export { scheduleUpdate, updateGames };

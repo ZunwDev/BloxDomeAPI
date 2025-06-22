@@ -11,10 +11,10 @@ export const createVerification = withErrorHandler(async ({ body }, reply) => {
   const { privateToken, publicToken } = authService.createTokens(payload);
 
   const cookieOptions = {
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.TEST_MODE ? "Lax" : "None",
+    secure: !process.env.TEST_MODE,
     path: "/",
-    domain: process.env.COOKIE_DOMAIN,
+    domain: process.env.TEST_MODE ? undefined : process.env.COOKIE_DOMAIN,
     maxAge: 60 * 60 * 24 * 60,
   };
 

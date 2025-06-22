@@ -6,7 +6,7 @@ export const fetchPlayers = async ({ q = "", page = 1, limit = 9 }) => {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = supabase.from("players").select("username, display_name, thumbnail_url, player_id");
+  let query = supabase.from("players").select("username, display_name, thumbnail_url, thumbnail_circle_url, player_id");
   if (q) query = query.ilike("username", `%${q}%`);
 
   return query.range(from, to);

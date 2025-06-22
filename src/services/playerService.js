@@ -2,17 +2,79 @@ import axios from "axios";
 import { ROBLOX_THUMBNAIL_URL, ROBLOX_USERS_URL } from "../utils/config.js";
 import { supabase } from "../utils/supabase-client.js";
 
-export const fetchPlayers = async ({ q = "", page = 1, limit = 9 }) => {
+export const fetchPlayers = async ({ q = "", page = 1, limit = 20 }) => {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = supabase.from("players").select("username, display_name, thumbnail_url, thumbnail_circle_url, player_id");
-  if (q) query = query.ilike("username", `%${q}%`);
+  let countQuery = supabase.from("players").select("player_id", { count: "exact", head: true });
+  if (q) countQuery = countQuery.ilike("username", `%${q}%`);
 
-  return query.range(from, to);
+  const { count: total, error: countError } = await countQuery;
+  if (countError) throw countError;
+  let query = supabase
+    .from("players")
+    .select(
+      `
+      username,
+      display_name,
+      thumbnail_url,
+      thumbnail_circle_url,
+      player_id,
+      verified!left(player_id)
+    `
+    )
+    .range(from, to);
+
+  if (q) {
+    query = query.ilike("username", `%${q}%`);
+  }
+
+  const { data: players, error } = await query;
+  if (error) throw error;
+  if (!players?.length) return { data: [], total: 0, page, limit, totalPages: 0, hasNextPage: false, hasPrevPage: false };
+
+  const totalPages = Math.ceil(total / limit);
+
+  const data = players.map((p) => ({
+    username: p.username,
+    display_name: p.display_name,
+    thumbnail_url: p.thumbnail_url,
+    thumbnail_circle_url: p.thumbnail_circle_url,
+    player_id: p.player_id,
+    verified: p.verified !== null,
+  }));
+
+  return {
+    data,
+    total,
+    page,
+    limit,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1,
+  };
 };
 
-export const fetchPlayerById = (player_id) => supabase.from("players").select("*").eq("player_id", player_id).single();
+export const fetchPlayerById = async (player_id) => {
+  const { data, error } = await supabase
+    .from("players")
+    .select(
+      `
+      *,
+      verified!left(player_id)
+    `
+    )
+    .eq("player_id", player_id)
+    .single();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  return {
+    ...data,
+    verified: data.verified !== null,
+  };
+};
 
 export const createNewPlayer = async (username, added_by) => {
   const userRes = await axios.post(`${ROBLOX_USERS_URL}/v1/usernames/users`, {
@@ -51,7 +113,7 @@ export const createNewPlayer = async (username, added_by) => {
     await supabase.from("players").update({ last_activity: new Date().toISOString() }).eq("player_id", added_by);
   }
 
-  return { data };
+  return data;
 };
 
 export const toggleBookmark = async (player_id, place_id) => {
@@ -74,21 +136,16 @@ export const toggleBookmark = async (player_id, place_id) => {
     .eq("player_id", player_id);
 
   if (updateError) throw { status: 500, message: "Failed to update bookmarks", details: updateError.message };
-
-  return { bookmarks };
 };
 
 export const getBookmarks = async (player_id) => {
   const { data, error } = await supabase.from("players").select("bookmarks").eq("player_id", player_id).single();
-
   if (error || !data) throw { status: 404, message: "Player not found" };
-
-  return { data };
+  return data;
 };
 
 export const getBookmarkedGames = async (player_id, codes = "all") => {
-  const { data: playerData } = await getBookmarks(player_id);
-
+  const playerData = await getBookmarks(player_id);
   const ids = playerData.bookmarks;
   if (!ids?.length) return { data: [] };
 
@@ -110,5 +167,5 @@ export const getBookmarkedGames = async (player_id, codes = "all") => {
   if (codes === "active") gamesWithCodes = gamesWithCodes.filter((g) => g.active_codes > 0);
   else if (codes === "expired") gamesWithCodes = gamesWithCodes.filter((g) => g.active_codes === 0);
 
-  return { data: gamesWithCodes };
+  return gamesWithCodes;
 };

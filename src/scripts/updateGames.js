@@ -1,7 +1,9 @@
 import axios from "axios";
+import dotenv from "dotenv";
 import { supabase } from "../utils/supabase-client.js";
+dotenv.config();
 
-const API_URL = "http://localhost:3001/api/v1";
+const API_URL = String(process.env.TEST_MODE) === "true" ? "http://localhost:3000/api/v1" : "http://api.bloxdome.com/api/v1";
 const BATCH_SIZE = 20;
 let page = 1;
 

@@ -96,6 +96,7 @@ const updateGames = async () => {
 };
 
 const scheduleUpdate = () => {
+  console.log("[GAME DATA UPDATE] Scheduling game data updates every 30 minutes.");
   setInterval(() => {
     console.log(`[GAME DATA UPDATE] Starting update for page ${page}`);
     updateGames();

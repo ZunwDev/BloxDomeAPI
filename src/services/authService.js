@@ -19,7 +19,7 @@ export const ensureVerifiedUser = async (player_id) => {
   if (fetchError) throw fetchError;
 
   if (!existing) {
-    const { error: insertError } = await supabase.from("verified").insert([{ player_id }]);
+    const { error: insertError } = await supabase.from("verified").insert([{ player_id, verified_at: now }]);
     if (insertError) throw insertError;
   } else {
     const { error: updateError } = await supabase.from("verified").update({ verified_at: now }).eq("player_id", player_id);

@@ -14,7 +14,7 @@ export const ensureVerifiedUser = async (player_id) => {
     .from("verified")
     .select("player_id")
     .eq("player_id", player_id)
-    .single();
+    .maybeSingle();
 
   if (fetchError) throw fetchError;
 

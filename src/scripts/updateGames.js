@@ -3,44 +3,43 @@ import dotenv from "dotenv";
 import { supabase } from "../utils/supabase-client.js";
 dotenv.config();
 
-const API_URL = String(process.env.TEST_MODE) === "true" ? "http://localhost:3000/api/v1" : "http://api.bloxdome.com/api/v1";
-const BATCH_SIZE = 20;
+const API_URL = String(process.env.TEST_MODE) === "true" ? "http://localhost:3001/api/v1" : "http://api.bloxdome.com/api/v1";
 let page = 1;
 
 const updateGames = async () => {
   try {
-    const response = await axios.get(`${API_URL}/games?page=${page}&limit=${BATCH_SIZE}`);
-    const { data: games, hasNextPage, totalPages } = response.data;
+    const response = await axios.get(`${API_URL}/games?page=1&limit=50&sort=most_players`);
+    const { data: games } = response.data;
 
     if (!games || games.length === 0) {
-      console.log("[GAME DATA UPDATE] No games found on this page, resetting to page 1.");
-      page = 1;
+      console.log("[GAME DATA UPDATE] No games found.");
       return;
     }
 
-    for (const game of games) {
-      const { place_id, universe_id } = game;
+    const universeIds = games.map((g) => g.universe_id).join(",");
+    const placeIdMap = Object.fromEntries(games.map((g) => [g.universe_id, g.place_id]));
 
-      const gamesRes = await axios.get(`https://games.roblox.com/v1/games?universeIds=${universe_id}`);
-      const gameData = gamesRes.data.data?.[0];
+    const [gamesRes, thumbRes, iconRes] = await Promise.all([
+      axios.get(`https://games.roblox.com/v1/games?universeIds=${universeIds}`),
+      axios.get(
+        `https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${universeIds}&size=768x432&format=Webp&isCircular=false&countPerUniverse=5`
+      ),
+      axios.get(
+        `https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeIds}&size=150x150&format=Webp&isCircular=false`
+      ),
+    ]);
 
-      if (!gameData) {
-        console.log(`[GAME DATA UPDATE] Game data for place_id ${place_id} not found.`);
-        continue;
-      }
+    const thumbsMap = Object.fromEntries(
+      (thumbRes.data?.data || []).map((entry) => [entry.universeId || entry.targetId, entry.thumbnails || []])
+    );
+    const iconsMap = Object.fromEntries((iconRes.data?.data || []).map((entry) => [entry.targetId, entry.imageUrl]));
 
-      const [thumbRes, iconRes] = await Promise.all([
-        axios.get(
-          `https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${universe_id}&size=768x432&format=Png&isCircular=false&countPerUniverse=5`
-        ),
-        axios.get(
-          `https://thumbnails.roblox.com/v1/games/icons?universeIds=${universe_id}&size=150x150&format=Png&isCircular=false`
-        ),
-      ]);
-
-      const thumbnails = thumbRes.data?.data?.[0]?.thumbnails || [];
-      const thumbnail_url = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].imageUrl : null;
-      const icon_url = iconRes.data?.data?.[0]?.imageUrl || null;
+    for (const gameData of gamesRes.data?.data || []) {
+      const universe_id = gameData.id;
+      const place_id = placeIdMap[universe_id];
+      const icon_url = iconsMap[universe_id] || null;
+      const thumbnails = thumbsMap[universe_id];
+      const thumbnail_url = thumbnails?.[0]?.imageUrl || null;
 
       const updatedGameData = {
         creator: gameData.creator.name,
@@ -80,29 +79,17 @@ const updateGames = async () => {
       }
     }
 
-    console.log(`[GAME DATA UPDATE] Processed page ${page} of ${totalPages} total pages.`);
-
-    if (hasNextPage) {
-      page += 1;
-    } else {
-      console.log("[GAME DATA UPDATE] Reached the last page, resetting to page 1 for next cycle.");
-      page = 1;
-    }
+    console.log(`[GAME DATA UPDATE] Processed top 50 most played games.`);
   } catch (err) {
     console.error("[GAME DATA UPDATE] Error in fetching or processing games:", err);
-    if (err.response?.status === 404 || err.response?.status === 400) {
-      console.log("[GAME DATA UPDATE] Pagination error detected, resetting to page 1.");
-      page = 1;
-    }
   }
 };
-
 const scheduleUpdate = () => {
   console.log("[GAME DATA UPDATE] Scheduling game data updates every 30 minutes.");
   setInterval(() => {
     console.log(`[GAME DATA UPDATE] Starting update for page ${page}`);
     updateGames();
-  }, 30 * 60 * 1000); // 30 minutes
+  }, 0.5 * 60 * 1000); // 30 minutes
 };
 
 export { scheduleUpdate, updateGames };

@@ -65,11 +65,11 @@ export const createSubmission = async (body) => {
     .eq("submitted_by", body.submitted_by)
     .eq("status", "pending");
 
-  if (count >= 5) {
+  if (count >= 3) {
     throw {
-      status: 429,
+      status: 403,
       message: "Submission limit reached",
-      details: "You can only have 5 pending submissions at a time.",
+      details: "You can only have 3 pending submissions at a time.",
     };
   }
 
@@ -81,7 +81,7 @@ export const createSubmission = async (body) => {
       submission_data: body.submission_data,
     },
   ]);
-  if (error) return { error };
+  if (error) return error;
   return { data };
 };
 

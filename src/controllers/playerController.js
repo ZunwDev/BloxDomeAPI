@@ -23,6 +23,11 @@ export const updateBookmarks = withErrorHandler(async ({ params, body }, reply) 
   reply.status(204);
 });
 
+export const updatePlayer = withErrorHandler(async ({ params }, reply) => {
+  await playerService.updatePlayer(params.player_id);
+  reply.status(204);
+});
+
 export const getBookmarkIds = withErrorHandler(async ({ params }, reply) => {
   const data = await playerService.getBookmarks(params.player_id);
   reply.status(200).send(data);

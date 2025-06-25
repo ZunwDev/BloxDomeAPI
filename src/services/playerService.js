@@ -1,6 +1,7 @@
 import axios from "axios";
 import { ROBLOX_THUMBNAIL_URL, ROBLOX_USERS_URL } from "../utils/config.js";
 import { supabase } from "../utils/supabase-client.js";
+import { fetchRobloxUser } from "./robloxService.js";
 
 export const fetchPlayers = async ({ q = "", page = 1, limit = 20 }) => {
   const from = (page - 1) * limit;
@@ -76,6 +77,30 @@ export const fetchPlayerById = async (player_id) => {
   };
 };
 
+export const updatePlayer = async (player_id) => {
+  const robloxUser = await fetchRobloxUser(player_id);
+  const [thumbRes, circularRes] = await Promise.all([
+    axios.get(`${ROBLOX_THUMBNAIL_URL}/v1/users/avatar?userIds=${player_id}&size=250x250&format=Webp`),
+    axios.get(`${ROBLOX_THUMBNAIL_URL}/v1/users/avatar-headshot?userIds=${player_id}&size=150x150&format=Webp&isCircular=true`),
+  ]);
+
+  const playerData = {
+    username: robloxUser.name,
+    display_name: robloxUser.displayName,
+    has_verified_badge: robloxUser.hasVerifiedBadge,
+    thumbnail_url: thumbRes.data?.data?.[0]?.imageUrl || null,
+    thumbnail_circle_url: circularRes.data?.data?.[0]?.imageUrl || null,
+    updated_at: new Date().toISOString(),
+    last_activity: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from("players").update(playerData).eq("player_id", player_id);
+  if (error) {
+    console.error("Failed to update player:", error.message);
+    throw { status: 400, message: "Failed to update player", details: error.message };
+  }
+};
+
 export const createNewPlayer = async (username, added_by) => {
   const userRes = await axios.post(`${ROBLOX_USERS_URL}/v1/usernames/users`, {
     usernames: [username],
@@ -103,6 +128,7 @@ export const createNewPlayer = async (username, added_by) => {
     has_verified_badge: robloxUser.hasVerifiedBadge,
     thumbnail_url: thumbRes.data?.data?.[0]?.imageUrl || null,
     thumbnail_circle_url: circularRes.data?.data?.[0]?.imageUrl || null,
+    updated_at: new Date().toISOString(),
     added_by,
   };
 

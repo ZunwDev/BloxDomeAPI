@@ -285,12 +285,18 @@ fastify.addHook("preHandler", async (request, reply) => {
 await fastify.register(cors, {
   origin: process.env.CORS_ORIGINS.split(","),
   credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  methods: ["GET", "POST", "PUT", "PATCH"],
 });
 
 await fastify.register(fastifyRateLimit, {
   max: Number(process.env.RATE_LIMIT_MAX),
   timeWindow: process.env.RATE_LIMIT_WINDOW,
+  ban: 2,
+  errorResponseBuilder: (req, context) => ({
+    statusCode: 429,
+    error: "Too Many Requests",
+    message: `Rate limit exceeded. Try again in ${context.after}`,
+  }),
 });
 
 fastify.register(fastifyCookie, {

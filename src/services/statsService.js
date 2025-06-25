@@ -19,17 +19,22 @@ export const getStats = async () => {
 
 export const getPlayerStats = async (player_id) => {
   const now = new Date();
+
   const thisWeekStart = new Date(now);
   thisWeekStart.setHours(0, 0, 0, 0);
-  thisWeekStart.setDate(now.getDate() - now.getDay()); // Sunday start
+  thisWeekStart.setDate(now.getDate() - now.getDay());
+
+  const lastWeekStart = new Date(thisWeekStart);
+  lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+  const lastWeekEnd = new Date(thisWeekStart);
+  lastWeekEnd.setMilliseconds(-1);
 
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const lastWeek = new Date(now);
-  lastWeek.setDate(now.getDate() - 7);
-
-  const lastMonth = new Date(now);
-  lastMonth.setMonth(now.getMonth() - 1);
+  const lastMonthStart = new Date(thisMonthStart);
+  lastMonthStart.setMonth(thisMonthStart.getMonth() - 1);
+  const lastMonthEnd = new Date(thisMonthStart);
+  lastMonthEnd.setMilliseconds(-1);
 
   const [{ count: totalGamesAdded }, { count: totalSubmissions }, { count: totalPlayersAdded }] = await Promise.all([
     supabase.from("games").select("*", { count: "exact", head: true }).eq("added_by", player_id),
@@ -38,19 +43,19 @@ export const getPlayerStats = async (player_id) => {
   ]);
 
   const [{ data: firstGameData }, { data: firstSubmissionData }, { data: firstPlayerData }] = await Promise.all([
-    supabase.from("games").select("created_at").eq("added_by", player_id).order("created_at", { ascending: true }).limit(1),
+    supabase.from("games").select("added_at").eq("added_by", player_id).order("added_at", { ascending: true }).limit(1),
     supabase
       .from("submissions")
       .select("created_at")
       .eq("submitted_by", player_id)
       .order("created_at", { ascending: true })
       .limit(1),
-    supabase.from("players").select("created_at").eq("added_by", player_id).order("created_at", { ascending: true }).limit(1),
+    supabase.from("players").select("added_at").eq("added_by", player_id).order("added_at", { ascending: true }).limit(1),
   ]);
 
-  const firstGameDate = firstGameData?.[0]?.created_at ? new Date(firstGameData[0].created_at) : now;
+  const firstGameDate = firstGameData?.[0]?.added_at ? new Date(firstGameData[0].added_at) : now;
   const firstSubmissionDate = firstSubmissionData?.[0]?.created_at ? new Date(firstSubmissionData[0].created_at) : now;
-  const firstPlayerDate = firstPlayerData?.[0]?.created_at ? new Date(firstPlayerData[0].created_at) : now;
+  const firstPlayerDate = firstPlayerData?.[0]?.added_at ? new Date(firstPlayerData[0].added_at) : now;
 
   const weeksSinceFirstGame = Math.max(1, (now.getTime() - firstGameDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
   const monthsSinceFirstGame = Math.max(
@@ -96,54 +101,66 @@ export const getPlayerStats = async (player_id) => {
       .from("games")
       .select("*", { count: "exact", head: true })
       .eq("added_by", player_id)
-      .gte("created_at", thisWeekStart.toISOString()),
+      .gte("added_at", thisWeekStart.toISOString()),
+
     supabase
       .from("games")
       .select("*", { count: "exact", head: true })
       .eq("added_by", player_id)
-      .gte("created_at", lastWeek.toISOString()),
+      .gte("added_at", lastWeekStart.toISOString())
+      .lt(lastWeekEnd.toISOString()),
+
     supabase
       .from("games")
       .select("*", { count: "exact", head: true })
       .eq("added_by", player_id)
-      .gte("created_at", thisMonthStart.toISOString()),
+      .gte("added_at", thisMonthStart.toISOString()),
+
     supabase
       .from("games")
       .select("*", { count: "exact", head: true })
       .eq("added_by", player_id)
-      .gte("created_at", lastMonth.toISOString()),
+      .gte("added_at", lastMonthStart.toISOString())
+      .lt(lastMonthEnd.toISOString()),
 
     supabase
       .from("submissions")
       .select("*", { count: "exact", head: true })
       .eq("submitted_by", player_id)
       .gte("created_at", thisWeekStart.toISOString()),
+
     supabase
       .from("submissions")
       .select("*", { count: "exact", head: true })
       .eq("submitted_by", player_id)
-      .gte("created_at", lastWeek.toISOString()),
+      .gte("created_at", lastWeekStart.toISOString())
+      .lt(lastWeekEnd.toISOString()),
+
     supabase
       .from("submissions")
       .select("*", { count: "exact", head: true })
       .eq("submitted_by", player_id)
       .gte("created_at", thisMonthStart.toISOString()),
+
     supabase
       .from("submissions")
       .select("*", { count: "exact", head: true })
       .eq("submitted_by", player_id)
-      .gte("created_at", lastMonth.toISOString()),
+      .gte("created_at", lastMonthStart.toISOString())
+      .lt(lastMonthEnd.toISOString()),
 
     supabase
       .from("submissions")
       .select("*", { count: "exact", head: true })
       .eq("submitted_by", player_id)
       .eq("status", "pending"),
+
     supabase
       .from("submissions")
       .select("*", { count: "exact", head: true })
       .eq("submitted_by", player_id)
       .eq("status", "approved"),
+
     supabase
       .from("submissions")
       .select("*", { count: "exact", head: true })
@@ -154,42 +171,52 @@ export const getPlayerStats = async (player_id) => {
       .from("submissions")
       .select("*", { count: "exact", head: true })
       .eq("submitted_by", player_id)
-      .gte("updated_at", lastWeek.toISOString()),
+      .gte("updated_at", lastWeekStart.toISOString())
+      .lt(lastWeekEnd.toISOString()),
+
     supabase
       .from("submissions")
       .select("*", { count: "exact", head: true })
       .eq("submitted_by", player_id)
-      .gte("updated_at", lastMonth.toISOString()),
+      .gte("updated_at", lastMonthStart.toISOString())
+      .lt(lastMonthEnd.toISOString()),
 
     supabase
       .from("players")
       .select("*", { count: "exact", head: true })
       .eq("added_by", player_id)
-      .gte("created_at", thisWeekStart.toISOString()),
-    supabase
-      .from("players")
-      .select("*", { count: "exact", head: true })
-      .eq("added_by", player_id)
-      .gte("created_at", lastWeek.toISOString()),
-    supabase
-      .from("players")
-      .select("*", { count: "exact", head: true })
-      .eq("added_by", player_id)
-      .gte("created_at", thisMonthStart.toISOString()),
-    supabase
-      .from("players")
-      .select("*", { count: "exact", head: true })
-      .eq("added_by", player_id)
-      .gte("created_at", lastMonth.toISOString()),
+      .gte("added_at", thisWeekStart.toISOString()),
 
-    supabase.from("games").select("created_at").eq("added_by", player_id).order("created_at", { ascending: false }).limit(1),
+    supabase
+      .from("players")
+      .select("*", { count: "exact", head: true })
+      .eq("added_by", player_id)
+      .gte("added_at", lastWeekStart.toISOString())
+      .lt(lastWeekEnd.toISOString()),
+
+    supabase
+      .from("players")
+      .select("*", { count: "exact", head: true })
+      .eq("added_by", player_id)
+      .gte("added_at", thisMonthStart.toISOString()),
+
+    supabase
+      .from("players")
+      .select("*", { count: "exact", head: true })
+      .eq("added_by", player_id)
+      .gte("added_at", lastMonthStart.toISOString())
+      .lt(lastMonthEnd.toISOString()),
+
+    supabase.from("games").select("added_at").eq("added_by", player_id).order("added_at", { ascending: false }).limit(1),
+
     supabase
       .from("submissions")
       .select("created_at")
       .eq("submitted_by", player_id)
       .order("created_at", { ascending: false })
       .limit(1),
-    supabase.from("players").select("created_at").eq("added_by", player_id).order("created_at", { ascending: false }).limit(1),
+
+    supabase.from("players").select("added_at").eq("added_by", player_id).order("added_at", { ascending: false }).limit(1),
   ]);
 
   return {
@@ -201,7 +228,7 @@ export const getPlayerStats = async (player_id) => {
       thisMonth: gamesThisMonth ?? 0,
       avgPerWeek: totalGamesAdded / weeksSinceFirstGame,
       avgPerMonth: totalGamesAdded / monthsSinceFirstGame,
-      lastAdded: lastGameAddedData?.[0]?.created_at ?? null,
+      lastAdded: lastGameAddedData?.[0]?.added_at ?? null,
     },
     submissions: {
       total: totalSubmissions ?? 0,
@@ -228,7 +255,7 @@ export const getPlayerStats = async (player_id) => {
       thisMonth: playersThisMonth ?? 0,
       avgPerWeek: totalPlayersAdded / weeksSinceFirstPlayer,
       avgPerMonth: totalPlayersAdded / monthsSinceFirstPlayer,
-      lastAdded: lastPlayerAddedData?.[0]?.created_at ?? null,
+      lastAdded: lastPlayerAddedData?.[0]?.added_at ?? null,
     },
   };
 };

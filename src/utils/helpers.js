@@ -1,4 +1,4 @@
-export const sendError = (reply, status, message, details = "") => reply.status(status).send({ error: { message, details } });
+export const sendError = (reply, status, message, details = "") => reply.status(status).send({ message, details });
 
 export const withErrorHandler = (handler) => async (req, reply) => {
   try {

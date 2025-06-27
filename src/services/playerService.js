@@ -95,6 +95,11 @@ export const updatePlayer = async (player_id) => {
   };
 
   const { error } = await supabase.from("players").update(playerData).eq("player_id", player_id);
+
+  if (player_id) {
+    await supabase.from("players").update({ last_activity: new Date().toISOString() }).eq("player_id", player_id);
+  }
+
   if (error) {
     console.error("Failed to update player:", error.message);
     throw { status: 400, message: "Failed to update player", details: error.message };
@@ -162,6 +167,10 @@ export const toggleBookmark = async (player_id, place_id) => {
     .eq("player_id", player_id);
 
   if (updateError) throw { status: 500, message: "Failed to update bookmarks", details: updateError.message };
+
+  if (player_id) {
+    await supabase.from("players").update({ last_activity: new Date().toISOString() }).eq("player_id", player_id);
+  }
 };
 
 export const getBookmarks = async (player_id) => {

@@ -1,5 +1,6 @@
 import { supabase } from "../utils/supabase-client.js";
 import { createOrUpdateCodes } from "./codeService.js";
+import { notifySubmissionApproved, notifySubmissionRejected } from "./notificationService.js";
 
 export const getSubmissions = async ({ status = "", page = 1, limit = 12, player_id } = {}) => {
   const from = (page - 1) * limit;
@@ -59,7 +60,7 @@ export const getSubmissionById = async (id) => {
 };
 
 export const createSubmission = async (body) => {
-  const { count, error: countError } = await supabase
+  const { count } = await supabase
     .from("submissions")
     .select("*", { count: "exact", head: true })
     .eq("submitted_by", body.submitted_by)
@@ -82,6 +83,11 @@ export const createSubmission = async (body) => {
     },
   ]);
   if (error) return error;
+
+  if (body.submitted_by) {
+    await supabase.from("players").update({ last_activity: new Date().toISOString() }).eq("player_id", submitted_by);
+  }
+
   return { data };
 };
 
@@ -105,7 +111,6 @@ export const approveSubmission = async (id, body) => {
 
   const { reviewed_by } = body;
   const reviewed_at = new Date().toISOString();
-
   const newCodes = submission.submission_data?.new_codes || [];
 
   const { error: updateError } = await supabase
@@ -126,15 +131,38 @@ export const approveSubmission = async (id, body) => {
     codes: newCodes,
   });
 
+  await notifySubmissionApproved(submission.submitted_by, id);
+
+  if (body.reviewed_by) {
+    await supabase.from("players").update({ last_activity: new Date().toISOString() }).eq("player_id", body.reviewed_by);
+  }
+
   return { message: "Approved and codes updated", result };
 };
 
 export const rejectSubmission = async (id, body) => {
+  const { data: submission, error: fetchError } = await supabase
+    .from("submissions")
+    .select("id, place_id, submitted_by, submission_data")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) {
+    console.error("Submission fetch error:", fetchError);
+    throw { status: 404, message: "Submission not found", details: fetchError.message };
+  }
+
   const { data, error } = await supabase
     .from("submissions")
     .update({ status: "rejected", reviewed_by: body.reviewed_by, reviewed_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error };
+  await notifySubmissionRejected(submission.submitted_by, id);
+
+  if (body.reviewed_by) {
+    await supabase.from("players").update({ last_activity: new Date().toISOString() }).eq("player_id", body.reviewed_by);
+  }
+
   return { data };
 };
 

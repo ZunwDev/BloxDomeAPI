@@ -4,7 +4,6 @@ import { supabase } from "../utils/supabase-client.js";
 dotenv.config();
 
 const API_URL = String(process.env.TEST_MODE) === "true" ? "http://localhost:3001/api/v1" : "http://api.bloxdome.com/api/v1";
-let page = 1;
 
 const updateGames = async () => {
   try {
@@ -79,7 +78,7 @@ const updateGames = async () => {
       }
     }
 
-    console.log(`[GAME DATA UPDATE] Processed top 50 most played games.`);
+    console.log("[GAME DATA UPDATE] Processed top 50 most played games.");
   } catch (err) {
     console.error("[GAME DATA UPDATE] Error in fetching or processing games:", err);
   }
@@ -87,7 +86,7 @@ const updateGames = async () => {
 const scheduleUpdate = () => {
   console.log("[GAME DATA UPDATE] Scheduling game data updates every 30 minutes.");
   setInterval(() => {
-    console.log(`[GAME DATA UPDATE] Starting update for page ${page}`);
+    console.log("[GAME DATA UPDATE] Starting update");
     updateGames();
   }, 30 * 60 * 1000); // 30 minutes
 };

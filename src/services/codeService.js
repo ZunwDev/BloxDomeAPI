@@ -4,8 +4,6 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
   const results = { created: [], updated: [], skipped: [], deleted: [] };
   const now = new Date().toISOString();
 
-  console.log("[DEBUG] Incoming codes:", codes);
-
   // Fetch existing codes
   const { data: existingCodes, error: existingError } = await supabase.from("codes").select("*").eq("place_id", place_id);
 
@@ -18,8 +16,6 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
     };
   }
 
-  console.log("[DEBUG] Existing codes:", existingCodes);
-
   const existingMap = Object.fromEntries(existingCodes.map((c) => [c.code, c]));
   const incomingCodeSet = new Set(codes.map((c) => c.code));
 
@@ -27,10 +23,6 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
   const codesToDelete = existingCodes.filter((ec) => !incomingCodeSet.has(ec.code));
 
   if (codesToDelete.length > 0) {
-    console.log(
-      "[DEBUG] Codes to delete:",
-      codesToDelete.map((c) => c.code)
-    );
     const { error: deleteError } = await supabase
       .from("codes")
       .delete()
@@ -78,10 +70,6 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
   }
 
   if (toInsert.length > 0) {
-    console.log(
-      "[DEBUG] Codes to insert:",
-      toInsert.map((c) => c.code)
-    );
     const { data, error } = await supabase.from("codes").insert(toInsert).select();
     if (error) {
       console.error("[ERROR] Inserting codes:", error);
@@ -91,10 +79,6 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
   }
 
   if (toUpdate.length > 0) {
-    console.log(
-      "[DEBUG] Codes to update:",
-      toUpdate.map((c) => c.code)
-    );
     const { data, error } = await supabase
       .from("codes")
       .upsert(toUpdate, { onConflict: ["id"] })
@@ -124,8 +108,6 @@ export const createOrUpdateCodes = async ({ place_id, added_by, updated_by, revi
       details: gameError.message,
     };
   }
-
-  console.log("[DEBUG] Operation results:", results);
   return results;
 };
 

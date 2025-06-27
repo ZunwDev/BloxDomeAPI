@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 import { wsClients } from "./websocketManager.js";
 
+const HEARTBEAT_TIMEOUT = 60000; // 60s without heartbeat = close socket
+
+const heartbeatTimers = new WeakMap();
+
 export default async function websocketHandler(fastify) {
   fastify.get("/ws", { websocket: true }, async (connection, request) => {
     const socket = connection;
@@ -12,7 +16,6 @@ export default async function websocketHandler(fastify) {
         const decoded = await fastify.jwt.verify(token);
         playerId = String(decoded.player_id);
       }
-
       if (!playerId && request.query?.playerId) {
         playerId = String(request.query.playerId);
       }
@@ -32,6 +35,7 @@ export default async function websocketHandler(fastify) {
     const uniquePlayerCount = wsClients.size;
     console.log(`[WS] Player ${playerId} connected. IP: ${request.ip}. Unique players: ${uniquePlayerCount}`);
 
+    // Send initial connected message
     try {
       socket.send(
         JSON.stringify({
@@ -47,6 +51,7 @@ export default async function websocketHandler(fastify) {
       return;
     }
 
+    // Broadcast online count to all clients
     const broadcastOnlineCount = () => {
       const count = wsClients.size;
       for (const sockets of wsClients.values()) {
@@ -59,12 +64,36 @@ export default async function websocketHandler(fastify) {
                 timestamp: new Date().toISOString(),
               })
             );
-          } catch {}
+          } catch {
+            // ignore broken sockets here, cleanup on close/error
+          }
         }
       }
     };
 
     broadcastOnlineCount();
+
+    // Start/reset heartbeat timeout for socket
+    const startHeartbeatTimeout = () => {
+      clearHeartbeatTimeout();
+      const timeout = setTimeout(() => {
+        console.log(`[WS] No heartbeat from ${playerId}, closing socket`);
+        socket.close();
+      }, HEARTBEAT_TIMEOUT);
+      heartbeatTimers.set(socket, timeout);
+    };
+
+    // Clear heartbeat timeout for socket
+    const clearHeartbeatTimeout = () => {
+      const timeout = heartbeatTimers.get(socket);
+      if (timeout) {
+        clearTimeout(timeout);
+        heartbeatTimers.delete(socket);
+      }
+    };
+
+    // Start heartbeat timeout on connect
+    startHeartbeatTimeout();
 
     socket.on("message", (data) => {
       try {
@@ -72,7 +101,9 @@ export default async function websocketHandler(fastify) {
 
         switch (msg.type) {
           case "HEARTBEAT":
+            // Reset heartbeat timeout on heartbeat message
             socket.send(JSON.stringify({ type: "pong", timestamp: new Date().toISOString() }));
+            startHeartbeatTimeout();
             break;
 
           case "SUBSCRIBE_ONLINE_COUNT":
@@ -94,6 +125,7 @@ export default async function websocketHandler(fastify) {
     });
 
     const cleanup = () => {
+      clearHeartbeatTimeout();
       const set = wsClients.get(playerId);
       if (set) {
         set.delete(socket);
@@ -106,7 +138,11 @@ export default async function websocketHandler(fastify) {
       broadcastOnlineCount();
     };
 
-    socket.on("close", cleanup);
+    socket.on("close", () => {
+      console.log(`[WS] Socket closed for player ${playerId}`);
+      cleanup();
+    });
+
     socket.on("error", (err) => {
       console.error(`[WS] Socket error for ${playerId}:`, err);
       cleanup();

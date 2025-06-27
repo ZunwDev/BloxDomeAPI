@@ -71,7 +71,7 @@ export default async function websocketHandler(fastify) {
         const msg = JSON.parse(data.toString());
 
         switch (msg.type) {
-          case "ping":
+          case "HEARTBEAT":
             socket.send(JSON.stringify({ type: "pong", timestamp: new Date().toISOString() }));
             break;
 

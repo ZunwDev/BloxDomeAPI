@@ -118,7 +118,7 @@ export const fetchSimilarGames = async (place_id) => {
   let query = supabase.from("games").select("place_id, name, icon_url").neq("place_id", place_id);
   query = match ? query.ilike("name", `%${match}%`) : query.eq("genre_id", game.genre_id);
 
-  let { data } = await query.limit(10);
+  let { data } = await query.limit(5);
   if (!data.length && match) {
     const fallback = await supabase
       .from("games")

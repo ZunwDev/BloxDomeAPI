@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { supabase } from "../utils/supabase-client.js";
 dotenv.config();
 
-const API_URL = String(process.env.TEST_MODE) === "true" ? "http://localhost:3001/api/v1" : "http://api.bloxdome.com/api/v1";
+const API_URL = String(process.env.TEST_MODE) === "true" ? "http://localhost:3001/api/v1" : "https://api.bloxdome.com/api/v1";
 
 const updateGames = async () => {
   try {

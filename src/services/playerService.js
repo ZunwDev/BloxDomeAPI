@@ -21,7 +21,8 @@ export const fetchPlayers = async ({ q = "", page = 1, limit = 20 }) => {
       thumbnail_url,
       thumbnail_circle_url,
       player_id,
-      verified!left(player_id)
+      verified!left(player_id),
+      is_contributor
     `
     )
     .range(from, to);
@@ -43,6 +44,7 @@ export const fetchPlayers = async ({ q = "", page = 1, limit = 20 }) => {
     thumbnail_circle_url: p.thumbnail_circle_url,
     player_id: p.player_id,
     verified: p.verified !== null,
+    is_contributor: p.is_contributor,
   }));
 
   return {
@@ -141,7 +143,10 @@ export const createNewPlayer = async (username, added_by) => {
   if (error) throw { status: 400, message: "Failed to create player", details: error.message };
 
   if (added_by) {
-    await supabase.from("players").update({ last_activity: new Date().toISOString() }).eq("player_id", added_by);
+    await supabase
+      .from("players")
+      .update({ last_activity: new Date().toISOString(), is_contributor: true })
+      .eq("player_id", added_by);
   }
 
   return data;

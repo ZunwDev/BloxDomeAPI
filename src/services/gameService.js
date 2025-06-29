@@ -181,7 +181,10 @@ export const createGame = async (place_id, added_by) => {
   if (error) throw new Error(error.message);
 
   if (added_by) {
-    await supabase.from("players").update({ last_activity: new Date().toISOString() }).eq("player_id", added_by);
+    await supabase
+      .from("players")
+      .update({ last_activity: new Date().toISOString(), is_contributor: true })
+      .eq("player_id", added_by);
   }
 
   return data;

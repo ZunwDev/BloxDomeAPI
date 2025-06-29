@@ -1,6 +1,7 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import * as authService from "../services/authService.js";
+import { notifySuccessfulVerification } from "../services/notificationService.js";
 import { withErrorHandler } from "../utils/helpers.js";
 dotenv.config();
 
@@ -75,7 +76,8 @@ export const callback = async (req, reply) => {
       httpOnly: false,
     });
 
-    return reply.redirect(isTestMode ? "http://localhost:3000/verify" : "https://bloxdome.com/verify");
+    reply.redirect(isTestMode ? "http://localhost:3000/verify" : "https://bloxdome.com/verify");
+    setTimeout(async () => await notifySuccessfulVerification(player_id), 10000);
   } catch (err) {
     console.error("OAuth callback failed:", err);
     if (err.response?.data) {
@@ -103,7 +105,8 @@ export const createVerification = withErrorHandler(async ({ body }, reply) => {
   reply.setCookie("_bloxdomeVerification", privateToken, { ...cookieOptions, httpOnly: true });
   reply.setCookie("_bloxdomeData", publicToken, { ...cookieOptions, httpOnly: false });
 
-  return reply.status(201).send({ success: true });
+  reply.status(201).send({ success: true });
+  setTimeout(async () => await notifySuccessfulVerification(player_id), 10000);
 });
 
 export const logout = withErrorHandler(async (_req, reply) => {

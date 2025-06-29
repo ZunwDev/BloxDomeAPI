@@ -1,6 +1,6 @@
 import { supabase } from "../utils/supabase-client.js";
 import { createOrUpdateCodes } from "./codeService.js";
-import { notifySubmissionApproved, notifySubmissionRejected } from "./notificationService.js";
+import { notifySubmissionApproved, notifySubmissionRejected, notifySubmissionReviewComment } from "./notificationService.js";
 
 export const getSubmissions = async ({ status = "", page = 1, limit = 12, player_id } = {}) => {
   const from = (page - 1) * limit;
@@ -85,7 +85,10 @@ export const createSubmission = async (body) => {
   if (error) return error;
 
   if (body.submitted_by) {
-    await supabase.from("players").update({ last_activity: new Date().toISOString() }).eq("player_id", submitted_by);
+    await supabase
+      .from("players")
+      .update({ last_activity: new Date().toISOString(), is_contributor: true })
+      .eq("player_id", submitted_by);
   }
 
   return { data };
@@ -167,7 +170,18 @@ export const rejectSubmission = async (id, body) => {
 };
 
 export const commentSubmission = async (id, body) => {
-  const { data, error } = await supabase.from("submission_comments").insert(body);
-  if (error) return { error };
-  return { data };
+  const { submission_id, text } = body;
+  const { data: insertData, error: insertError } = await supabase.from("submission_comments").insert(body);
+  if (insertError) return { error: insertError };
+
+  const { data: submission, error: fetchError } = await supabase
+    .from("submissions")
+    .select("submitted_by")
+    .eq("id", submission_id)
+    .single();
+
+  if (fetchError || !submission?.submitted_by) return { error: fetchError || "No player found" };
+  await notifySubmissionReviewComment(submission.submitted_by, submission_id, text);
+
+  return { data: insertData };
 };

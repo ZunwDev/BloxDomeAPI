@@ -94,16 +94,12 @@ export async function markAllNotificationsAsSeen(playerId) {
 
 export async function notifySubmissionRejected(playerId, submissionId) {
   const { game_name } = await getGameAndReviewer(submissionId);
-
   const fakeSubmissionId = generateFakeSubmissionId(submissionId);
-
-  const title = "Your submission was rejected";
-  const message = `Your submission (${fakeSubmissionId}) for ${game_name} was rejected.`;
 
   return insertNotification(playerId, "SUBMISSION_REJECTED", {
     id: submissionId,
-    message,
-    title,
+    message: `Your submission (${fakeSubmissionId}) for ${game_name} was rejected.`,
+    title: "Your submission was rejected",
     game_name,
     link: "/submissions",
   });
@@ -111,17 +107,29 @@ export async function notifySubmissionRejected(playerId, submissionId) {
 
 export async function notifySubmissionApproved(playerId, submissionId) {
   const { game_name } = await getGameAndReviewer(submissionId);
-
   const fakeSubmissionId = generateFakeSubmissionId(submissionId);
-
-  const title = "Your submission was approved";
-  const message = `Your submission (${fakeSubmissionId}) for ${game_name} was approved.`;
 
   return insertNotification(playerId, "SUBMISSION_APPROVED", {
     id: submissionId,
-    message,
-    title,
+    message: `Your submission (${fakeSubmissionId}) for ${game_name} was approved.`,
+    title: "Your submission was approved",
     game_name,
     link: "/submissions",
+  });
+}
+
+export async function notifySubmissionReviewComment(playerId, submissionId, comment) {
+  return insertNotification(playerId, "REVIEWER_COMMENT_CREATED", {
+    id: submissionId,
+    title: `Your submission (${generateFakeSubmissionId(submissionId)}) received a comment`,
+    message: `A reviewer left feedback: "${comment}"`,
+    link: "/submissions",
+  });
+}
+
+export async function notifySuccessfulVerification(playerId) {
+  return insertNotification(playerId, "VERIFICATION_SUCCESSFUL", {
+    message: "Thanks for verifying — your account is now fully active.",
+    title: "You're verified!",
   });
 }

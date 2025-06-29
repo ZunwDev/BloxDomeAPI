@@ -3,7 +3,6 @@ import app from "./app.js";
 dotenv.config();
 
 import { scheduleUpdate } from "./src/scripts/updateGames.js";
-//export { broadcast };
 
 async function start() {
   try {

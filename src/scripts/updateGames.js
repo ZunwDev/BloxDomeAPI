@@ -7,7 +7,11 @@ const API_URL = String(process.env.TEST_MODE) === "true" ? "http://localhost:300
 
 const updateGames = async () => {
   try {
-    const response = await axios.get(`${API_URL}/games?page=1&limit=50&sort=most_players`);
+    const response = await axios.get(`${API_URL}/games?page=1&limit=50&sort=most_players`, {
+      headers: {
+        "X-Cron-Job": "internal",
+      },
+    });
     const { data: games } = response.data;
 
     if (!games || games.length === 0) {

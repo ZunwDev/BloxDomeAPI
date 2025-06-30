@@ -109,7 +109,8 @@ fastify.addHook("preHandler", async (request, reply) => {
   if (
     request.method === "GET" ||
     request.url.startsWith(`${DEFAULT_API_URL}/players`) ||
-    request.url.startsWith(`${DEFAULT_API_URL}/auth/verify`)
+    request.url.startsWith(`${DEFAULT_API_URL}/auth/verify`) ||
+    request.url.startsWith(`${DEFAULT_API_URL}/auth/callback`)
   ) {
     return;
   }

@@ -31,10 +31,16 @@ export const fetchGames = async (queryParams) => {
     }
   }
 
-  gameQuery =
-    sort === "most_players"
-      ? gameQuery.order("playing", { ascending: false })
-      : gameQuery.order("updated_at", { ascending: false });
+  switch (sort) {
+    case "most_players":
+      gameQuery = gameQuery.order("playing", { ascending: false });
+      break;
+    case "recently_added":
+      gameQuery = gameQuery.order("added_at", { ascending: false });
+      break;
+    default:
+      gameQuery = gameQuery.order("updated_at", { ascending: false });
+  }
 
   gameQuery = gameQuery.range(offset, offset + limit - 1);
 

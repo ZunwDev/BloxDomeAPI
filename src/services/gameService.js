@@ -3,7 +3,7 @@ import { ROBLOX_API_URL, ROBLOX_GAMES_URL, ROBLOX_THUMBNAIL_URL } from "../utils
 import { supabase } from "../utils/supabase-client.js";
 
 export const fetchGames = async (queryParams) => {
-  const { page = 1, limit = 12, sort = "latest", updated = "all", genre_id, search = "" } = queryParams;
+  const { page = 1, limit = 12, sort = "recent_update", genre_id, search = "" } = queryParams;
   const offset = (page - 1) * limit;
 
   let gameQuery = supabase.from("games").select(
@@ -22,21 +22,18 @@ export const fetchGames = async (queryParams) => {
   if (genre_id) gameQuery = gameQuery.eq("genre_id", genre_id);
   if (search.trim()) gameQuery = gameQuery.ilike("name", `%${search.trim()}%`);
 
-  if (updated !== "all") {
-    const daysMap = { one_day: 1, three_days: 3, week: 7 };
-    const days = daysMap[updated];
-    if (days) {
-      const dateThreshold = new Date(Date.now() - days * 864e5).toISOString();
-      gameQuery = gameQuery.gte("updated_at", dateThreshold);
-    }
-  }
-
   switch (sort) {
     case "most_players":
       gameQuery = gameQuery.order("playing", { ascending: false });
       break;
     case "recently_added":
       gameQuery = gameQuery.order("added_at", { ascending: false });
+      break;
+    case "release_date":
+      gameQuery = gameQuery.order("created_at", { ascending: false });
+      break;
+    case "recent_update":
+      gameQuery = gameQuery.order("updated_at", { ascending: false });
       break;
     default:
       gameQuery = gameQuery.order("updated_at", { ascending: false });

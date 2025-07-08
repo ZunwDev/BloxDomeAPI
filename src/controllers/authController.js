@@ -76,7 +76,7 @@ export const callback = async (req, reply) => {
       httpOnly: false,
     });
 
-    reply.redirect(isTestMode ? "http://localhost:3000/verify" : "https://bloxdome.com/verify");
+    reply.redirect(isTestMode ? "http://localhost:3000" : "https://bloxdome.com");
     setTimeout(async () => await notifySuccessfulVerification(player_id), 10000);
   } catch (err) {
     console.error("OAuth callback failed:", err);

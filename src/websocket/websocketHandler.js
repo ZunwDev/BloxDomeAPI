@@ -100,22 +100,26 @@ export default async function websocketHandler(fastify) {
         const msg = JSON.parse(data.toString());
 
         switch (msg.type) {
+          // Keep socket alive
           case "HEARTBEAT":
-            // Reset heartbeat timeout on heartbeat message
             socket.send(JSON.stringify({ type: "pong", timestamp: new Date().toISOString() }));
             startHeartbeatTimeout();
             break;
+          // Check if player is online
+          case "IS_ONLINE": {
+            const targetId = msg.payload?.playerId;
+            if (!targetId) break;
 
-          case "SUBSCRIBE_ONLINE_COUNT":
+            const isOnline = wsClients.has(targetId);
             socket.send(
               JSON.stringify({
-                type: "ONLINE_COUNT",
-                count: wsClients.size,
-                timestamp: new Date().toISOString(),
+                type: "IS_ONLINE_RESULT",
+                playerId: targetId,
+                online: isOnline,
               })
             );
             break;
-
+          }
           default:
             console.warn(`[WS] Unknown message type from ${playerId}:`, msg.type);
         }

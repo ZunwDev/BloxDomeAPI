@@ -88,7 +88,7 @@ export const createSubmission = async (body) => {
     await supabase
       .from("players")
       .update({ last_activity: new Date().toISOString(), is_contributor: true })
-      .eq("player_id", submitted_by);
+      .eq("player_id", body.submitted_by);
   }
 
   return { data };

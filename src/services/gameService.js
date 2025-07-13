@@ -85,6 +85,75 @@ export const fetchGames = async (queryParams) => {
 	};
 };
 
+export const fetchLandingGames = async (limit = 12) => {
+	const fetchCategory = async (sortKey, orderDesc = true) => {
+		const { data: games, error } = await supabase
+			.from("games")
+			.select(
+				`
+				name,
+				place_id,
+				universe_id,
+				playing,
+				updated_at,
+				icon_url,
+				genres(name)
+				`,
+				{ count: "exact" },
+			)
+			.order(sortKey, { ascending: !orderDesc })
+			.limit(12);
+
+		if (error) {
+			console.error(
+				`Error fetching games sorted by ${sortKey}:`,
+				error.message,
+			);
+			throw new Error(error.message);
+		}
+
+		if (!games || games.length === 0) return [];
+		const placeIds = games.map((g) => g.place_id);
+
+		const { data: codesData, error: codesError } = await supabase
+			.from("codes")
+			.select("place_id")
+			.eq("active", true)
+			.in("place_id", placeIds);
+
+		if (codesError) {
+			console.error(
+				`Error fetching codes for sortKey ${sortKey}:`,
+				codesError.message,
+			);
+			throw new Error(codesError.message);
+		}
+
+		const codeCountMap = {};
+		for (const { place_id } of codesData) {
+			codeCountMap[place_id] = (codeCountMap[place_id] || 0) + 1;
+		}
+
+		return games.map((game) => ({
+			...game,
+			genre: game.genres?.name || null,
+			active_codes: codeCountMap[game.place_id] || 0,
+		}));
+	};
+
+	const [recently_updated, most_players, recently_added] = await Promise.all([
+		fetchCategory("updated_at"),
+		fetchCategory("playing"),
+		fetchCategory("added_at"),
+	]);
+
+	return {
+		recently_updated,
+		most_players,
+		recently_added,
+	};
+};
+
 export const fetchGameDetails = async (place_id) => {
 	const { data: game, error } = await supabase
 		.from("games")
@@ -102,7 +171,6 @@ export const fetchGameDetails = async (place_id) => {
 
 	if (error || !game) throw new Error("Game not found");
 
-	// === Similar Games Logic ===
 	const keywords = [
 		"Anime",
 		"Simulator",

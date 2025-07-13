@@ -6,6 +6,11 @@ export const getGames = withErrorHandler(async ({ query }, reply) => {
 	reply.status(200).send(games);
 });
 
+export const getLandingGames = withErrorHandler(async ({ query }, reply) => {
+	const games = await gameService.fetchLandingGames(query);
+	reply.status(200).send(games);
+});
+
 export const getGame = withErrorHandler(async ({ params }, reply) => {
 	const data = await gameService.fetchGameDetails(params.place_id);
 	reply.status(200).send(data);

@@ -147,15 +147,20 @@ await fastify.register(cors, {
   methods: ["GET", "POST", "PUT", "PATCH"],
 });
 
+
 await fastify.register(fastifyRateLimit, {
-  max: Number(process.env.RATE_LIMIT_MAX),
-  timeWindow: process.env.RATE_LIMIT_WINDOW,
+  max: Number(process.env.RATE_LIMIT_MAX) || 100,
+  timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
   ban: 2,
-  errorResponseBuilder: (req, context) => ({
-    statusCode: 429,
-    error: "Too Many Requests",
-    message: `Rate limit exceeded. Try again in ${context.after}`,
-  }),
+  errorResponseBuilder: (req, context) => {
+    return {
+      statusCode: 429,
+      error: 'Too Many Requests',
+      message: 'Rate limit exceeded. Please try again later.',
+      retryAfter: context.after,
+      ttl: context.ttl
+    };
+  },
 });
 
 fastify.register(fastifyCookie, {

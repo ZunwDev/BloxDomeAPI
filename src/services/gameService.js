@@ -24,7 +24,9 @@ export const fetchGames = async (queryParams) => {
       playing,
       updated_at,
       icon_url,
-      genres(name)
+      genres(name),
+	  major_update,
+	  major_updated_at
     `,
 		{ count: "exact" },
 	);
@@ -97,7 +99,9 @@ export const fetchLandingGames = async (limit = 12) => {
 				playing,
 				updated_at,
 				icon_url,
-				genres(name)
+				genres(name),
+				major_update,
+				major_updated_at
 				`,
 				{ count: "exact" },
 			)
@@ -293,22 +297,5 @@ export const createGame = async (place_id, added_by) => {
 			.eq("player_id", added_by);
 	}
 
-	return data;
-};
-
-export const getGenres = async (name) => {
-	if (name) {
-		const { data, error } = await supabase
-			.from("genres")
-			.select("*")
-			.ilike("name", name)
-			.single();
-		if (error) throw new Error(error.message);
-		if (!data) throw new Error("Genre not found");
-		return data;
-	}
-
-	const { data, error } = await supabase.from("genres").select("*").order("id");
-	if (error) throw new Error(error.message);
 	return data;
 };
